@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+venv/
+.env
+.DS_Store
+.vscode/
+test_audio.wav
+test_audio_v2.m4a
