@@ -288,15 +288,18 @@ def handle_upload():
             return jsonify({"error": str(e)}), 502
         try:
             transcript, t_stt_ms = future_transcribe.result()
+            print(f"📝 WHISPER TRANSCRIBED: '{transcript}'")
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
     # Generate feedback with GPT-5
     scenario_title = request.form.get("scenario_title")  # optional hint
+    print(f"🤖 SENDING TO GPT - Scenario: '{scenario_title}', Transcript: '{transcript}'")
     try:
         _t = time.perf_counter()
         feedback = generate_feedback_with_gpt(transcript, scenario_title)
         t_llm_ms = int((time.perf_counter() - _t) * 1000)
+        print(f"💬 GPT RESPONSE: {feedback}")
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 502
 
