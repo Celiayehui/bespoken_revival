@@ -59,8 +59,9 @@ export default function App() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
       formData.append('user_id', 'test_user');
-      formData.append('scenario_id', 'coffee_shop');
-      formData.append('turn_index', '1');
+      // Hardcoded for MVP testing - happy hour scenario, first turn
+      formData.append('scenario_id', 'happy_hour');
+      formData.append('turn_index', '3');
       
       // POST to Flask backend
       const response = await fetch('http://127.0.0.1:5000/upload', {
