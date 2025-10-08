@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react';
-import { Play, Mic } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Mic } from 'lucide-react';
 
 type RecordingStatus = 'idle' | 'recording' | 'recorded' | 'feedback';
 
 export default function App() {
+  // Hardcoded video URL for turn 3 of happy hour scenario
+  const VIDEO_URL = "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_3.mp4";
+  
   const [status, setStatus] = useState<RecordingStatus>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [feedback, setFeedback] = useState<string>('');
@@ -180,11 +183,13 @@ export default function App() {
 
       {/* Video Player */}
       <div className="px-5 mb-8">
-        <div className="w-full h-[200px] bg-black rounded-lg flex items-center justify-center">
-          <button className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center hover:bg-opacity-30 transition-all">
-            <Play className="w-6 h-6 text-white ml-1" fill="white" />
-          </button>
-        </div>
+        <video 
+          src={VIDEO_URL}
+          controls
+          autoPlay
+          playsInline
+          className="w-full h-[200px] rounded-lg object-cover"
+        />
       </div>
 
       {/* Record Button */}
