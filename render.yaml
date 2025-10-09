@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: bespoken-backend
+    env: python
+    region: oregon
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && gunicorn app:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11

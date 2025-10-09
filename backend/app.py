@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from pymongo import MongoClient
+from scenarios import get_turn_context, get_video_url
 
 # If you use the OpenAI Python SDK for Whisper + GPT-5
 # pip install openai>=1.40.0
@@ -126,7 +127,7 @@ def transcribe_with_whisper(file_bytes: bytes, filename: str) -> str:
         raise RuntimeError(f"Whisper transcription failed: {e}")
 
 
-def generate_feedback_with_gpt(transcript: str, scenario_title: str | None = None) -> dict:
+def generate_feedback_with_gpt(transcript: str, scenario_title: str | None = None, scenario_description: str | None = None, turn_transcript: str | None = None) -> dict:
     """Call GPT-5 to generate concise pronunciation/fluency/word-choice feedback and a suggested native-like rewrite."""
     if not openai_client:
         raise RuntimeError("OpenAI client is not initialized. Set OPENAI_API_KEY and install openai SDK.")
@@ -143,8 +144,7 @@ def generate_feedback_with_gpt(transcript: str, scenario_title: str | None = Non
     )
 
     user_prompt = (
-        f"Scenario: {scenario_title or 'conversation'}\n"
-        f"Learner said: \"{transcript}\"\n"
+        f"The scenario is: {scenario_description or 'conversation'}. In this turn, the conversation partner said: '{turn_transcript or '[no context]'}'. Now the learner responded with: '{transcript}'\n"
         "Give one quick tip about how to sound more natural to a native U.S. English speaker."
         " If it already sounds natural, praise them instead of suggesting a rewrite."
     )
@@ -205,6 +205,34 @@ def list_scenarios():
         {"id": "hotel_checkin", "title": "Hotel check-in"},
         {"id": "job_interview", "title": "Job interview: Tell me about yourself"},
     ])
+
+
+@app.get("/api/turn")
+def get_turn():
+    scenario_id = request.args.get('scenario_id')
+    turn_index = request.args.get('turn_index')
+    
+    if not scenario_id or not turn_index:
+        return jsonify({"error": "Missing scenario_id or turn_index"}), 400
+    
+    try:
+        turn_index = int(turn_index)
+    except ValueError:
+        return jsonify({"error": "turn_index must be an integer"}), 400
+    
+    turn_context = get_turn_context(scenario_id, turn_index)
+    video_url = get_video_url(scenario_id, turn_index)
+    
+    if not turn_context or not video_url:
+        return jsonify({"error": "Scenario or turn not found"}), 404
+    
+    return jsonify({
+        "scenario_name": turn_context["scenario_title"],
+        "scenario_description": turn_context["scenario_description"],
+        "turn_index": turn_index,
+        "video_url": video_url,
+        "turn_transcript": turn_context["turn_transcript"]
+    })
 
 
 @app.post("/upload")
@@ -292,12 +320,23 @@ def handle_upload():
         except Exception as e:
             return jsonify({"error": str(e)}), 502
 
+    # Get scenario context for better feedback
+    try:
+        turn_context = get_turn_context(scenario_id, turn_index)
+    except Exception as e:
+        print(f"⚠️ Failed to get turn context: {e}")
+        turn_context = None
+
     # Generate feedback with GPT-5
-    scenario_title = request.form.get("scenario_title")  # optional hint
-    print(f"🤖 SENDING TO GPT - Scenario: '{scenario_title}', Transcript: '{transcript}'")
+    print(f"🤖 SENDING TO GPT - Scenario: '{turn_context.get('scenario_title') if turn_context else 'unknown'}', Turn question: '{turn_context.get('turn_transcript', '')[:50] if turn_context else 'none'}...', User said: '{transcript}'")
     try:
         _t = time.perf_counter()
-        feedback = generate_feedback_with_gpt(transcript, scenario_title)
+        feedback = generate_feedback_with_gpt(
+            transcript=transcript, 
+            scenario_title=turn_context.get('scenario_title') if turn_context else None,
+            scenario_description=turn_context.get('scenario_description') if turn_context else None,
+            turn_transcript=turn_context.get('turn_transcript') if turn_context else None
+        )
         t_llm_ms = int((time.perf_counter() - _t) * 1000)
         print(f"💬 GPT RESPONSE: {feedback}")
     except RuntimeError as e:
