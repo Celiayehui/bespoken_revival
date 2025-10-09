@@ -18,7 +18,7 @@ export default function App() {
 
   const fetchTurnData = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/api/turn?scenario_id=happy_hour&turn_index=${currentTurn}`);
+      const response = await fetch(`https://bespoken-revival.onrender.com/api/turn?scenario_id=happy_hour&turn_index=${currentTurn}`);
       if (!response.ok) {
         if (response.status === 404) {
           setIsScenarioComplete(true);
@@ -89,7 +89,7 @@ export default function App() {
       formData.append('turn_index', currentTurn.toString());
       
       // POST to Flask backend
-      const response = await fetch('http://127.0.0.1:5000/upload', {
+      const response = await fetch('https://bespoken-revival.onrender.com/upload', {
         method: 'POST',
         body: formData,
       });
