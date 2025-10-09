@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Mic } from 'lucide-react';
 
 type RecordingStatus = 'idle' | 'recording' | 'recorded' | 'feedback';
 
 export default function App() {
-  // Hardcoded video URL for turn 3 of happy hour scenario
-  const VIDEO_URL = "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_3.mp4";
+  const [currentTurn, setCurrentTurn] = useState(1); // Start with turn 1 for happy_hour scenario
+  const [turnData, setTurnData] = useState<any>(null);
+  const [isScenarioComplete, setIsScenarioComplete] = useState(false);
   
   const [status, setStatus] = useState<RecordingStatus>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -14,6 +15,27 @@ export default function App() {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  const fetchTurnData = async () => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/turn?scenario_id=happy_hour&turn_index=${currentTurn}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          setIsScenarioComplete(true);
+          return;
+        }
+        throw new Error('Failed to fetch turn data');
+      }
+      const data = await response.json();
+      setTurnData(data);
+    } catch (error) {
+      console.error('Error fetching turn data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTurnData();
+  }, [currentTurn]);
 
   const startRecording = async () => {
     try {
@@ -62,9 +84,9 @@ export default function App() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
       formData.append('user_id', 'test_user');
-      // Hardcoded for MVP testing - happy hour scenario, first turn
+      // Hardcoded for MVP testing - happy hour scenario
       formData.append('scenario_id', 'happy_hour');
-      formData.append('turn_index', '3');
+      formData.append('turn_index', currentTurn.toString());
       
       // POST to Flask backend
       const response = await fetch('http://127.0.0.1:5000/upload', {
@@ -97,6 +119,7 @@ export default function App() {
   };
 
   const handleNext = () => {
+    setCurrentTurn(currentTurn + 1);
     setStatus('idle');
     setAudioBlob(null);
     setFeedback('');
@@ -178,18 +201,24 @@ export default function App() {
 
       {/* Title */}
       <div className="px-5 mb-6">
-        <h1 className="text-lg font-bold text-gray-900">Ordering Coffee</h1>
+        <h1 className="text-lg font-bold text-gray-900">{turnData?.scenario_name || "Loading..."}</h1>
       </div>
 
       {/* Video Player */}
       <div className="px-5 mb-8">
-        <video 
-          src={VIDEO_URL}
-          controls
-          autoPlay
-          playsInline
-          className="w-full h-[200px] rounded-lg object-cover"
-        />
+        {turnData?.video_url ? (
+          <video 
+            src={turnData.video_url}
+            controls
+            autoPlay
+            playsInline
+            className="w-full h-[200px] rounded-lg object-cover"
+          />
+        ) : (
+          <div className="w-full h-[200px] bg-gray-200 rounded-lg flex items-center justify-center">
+            <p className="text-gray-500">Loading video...</p>
+          </div>
+        )}
       </div>
 
       {/* Record Button */}
@@ -225,9 +254,15 @@ export default function App() {
 
       {/* Next Button */}
       <div className="flex justify-center mt-auto mb-8">
-        <button className="w-[350px] h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center justify-center">
-          Next
-        </button>
+        {isScenarioComplete ? (
+          <div className="w-[350px] h-12 bg-green-500 text-white rounded-lg flex items-center justify-center">
+            Scenario Complete!
+          </div>
+        ) : (
+          <button className="w-[350px] h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center justify-center">
+            Next
+          </button>
+        )}
       </div>
       </div>
     </>
