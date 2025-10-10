@@ -252,18 +252,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* Next Button */}
-      <div className="flex justify-center mt-auto mb-8">
-        {isScenarioComplete ? (
+      {/* Scenario Complete Message */}
+      {isScenarioComplete && (
+        <div className="flex justify-center mt-auto mb-8">
           <div className="w-[350px] h-12 bg-green-500 text-white rounded-lg flex items-center justify-center">
             Scenario Complete!
           </div>
-        ) : (
-          <button className="w-[350px] h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all flex items-center justify-center">
-            Next
-          </button>
-        )}
-      </div>
+        </div>
+      )}
       </div>
     </>
   );
