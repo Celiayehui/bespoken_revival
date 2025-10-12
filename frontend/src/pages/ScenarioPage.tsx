@@ -24,7 +24,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
 
   const fetchTurnData = async () => {
     try {
-      const response = await fetch(`https://bespoken-revival.onrender.com/api/turn?scenario_id=${scenarioId}&turn_index=${currentTurn}`);
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/turn?scenario_id=${scenarioId}&turn_index=${currentTurn}`);
       if (!response.ok) {
         if (response.status === 404) {
           setIsScenarioComplete(true);
@@ -94,7 +95,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       formData.append('turn_index', currentTurn.toString());
       
       // POST to Flask backend
-      const response = await fetch('https://bespoken-revival.onrender.com/upload', {
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -115,12 +117,27 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       setFeedback(formattedFeedback);
       setStatus('feedback');
       
-      // If this is the final turn (turn 3 for happy_hour scenario), automatically trigger celebration
-      if (currentTurn === 3) {
-        setTimeout(() => {
-          onComplete();
-        }, 2000); // Wait 2 seconds to let user see the feedback
-      }
+      // Check if the next turn exists
+      const checkNextTurn = async () => {
+        try {
+          const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+          const nextTurnResponse = await fetch(`${apiUrl}/api/turn?scenario_id=${scenarioId}&turn_index=${currentTurn + 1}`);
+          if (nextTurnResponse.status === 404) {
+            // No next turn exists, this was the final turn
+            setTimeout(() => {
+              onComplete();
+            }, 2000); // Wait 2 seconds to let user see the feedback
+          }
+        } catch (error) {
+          console.error('Error checking next turn:', error);
+          // If there's an error checking, assume this might be the final turn
+          setTimeout(() => {
+            onComplete();
+          }, 2000);
+        }
+      };
+      
+      checkNextTurn();
     } catch (error) {
       console.error('Error submitting recording:', error);
       setFeedback('Sorry, there was an error processing your recording. Please try again.');
