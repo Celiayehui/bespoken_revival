@@ -8,16 +8,16 @@ SCENARIOS = {
                 "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_3.mp4",
                 "transcript": "Hey, nice to meet you! Where are you from? Tell me a little about yourself?"
             },
-            {
-                "turn_index": 2,
-                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_6.mp4",
-                "transcript": "I'm from Iowa! I grew up in the capital, Des Moines, but it's pretty small for a capital so it feels like a small town. How's it been settling in here? You doing anything fun this weekend?"
-            },
-            {
-                "turn_index": 3,
-                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_10.mp4",
-                "transcript": "That's so cool! Hey, I've had a few of these drinks, so I gotta run to the bathroom, but it was great to meet you!"
-            }
+            # {
+            #     "turn_index": 2,
+            #     "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_6.mp4",
+            #     "transcript": "I'm from Iowa! I grew up in the capital, Des Moines, but it's pretty small for a capital so it feels like a small town. How's it been settling in here? You doing anything fun this weekend?"
+            # },
+            # {
+            #     "turn_index": 3,
+            #     "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_10.mp4",
+            #     "transcript": "That's so cool! Hey, I've had a few of these drinks, so I gotta run to the bathroom, but it was great to meet you!"
+            # }
         ]
     }
 }
