@@ -1,43 +1,94 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import ScenarioLibrary from './pages/ScenarioLibrary';
 import ScenarioPage from './pages/ScenarioPage';
 import CelebrationPage from './pages/CelebrationPage';
 
+type Screen = 'library' | 'scenario' | 'celebration';
+
 export default function App() {
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [scenarioId, setScenarioId] = useState('happy_hour');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('library');
+  const [scenarioId, setScenarioId] = useState('coffee_shop');
   const [currentTurn, setCurrentTurn] = useState(1);
+  const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
+  
+  const [completedScenarios, setCompletedScenarios] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bespoken-completed-scenarios');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bespoken-completed-scenarios', JSON.stringify(Array.from(completedScenarios)));
+    }
+  }, [completedScenarios]);
+
+  // Map scenario IDs to display names
+  const scenarioNames: Record<string, string> = {
+    'happy_hour': 'Happy Hour - First Networking Event',
+    'coffee_shop': 'Order coffee at Starbucks',
+    'hotel_checkin': 'Hotel check-in',
+    'job_interview': 'Job interview: Tell me about yourself',
+    'doctor_appointment': 'Making a doctor\'s appointment',
+    'salary_negotiation': 'Negotiating a salary raise',
+  };
+
+  const handleSelectScenario = (selectedScenarioId: string) => {
+    setScenarioId(selectedScenarioId);
+    setCurrentTurn(1);
+    setFeedbackHistory([]);
+    setCurrentScreen('scenario');
+  };
 
   const handleComplete = () => {
-    setShowCelebration(true);
+    setCompletedScenarios(prev => new Set([...prev, scenarioId]));
+    setCurrentScreen('celebration');
   };
 
   const handleBackToScenarios = () => {
-    // Placeholder for navigation to homepage
-    window.location.href = '/';
+    setCurrentScreen('library');
   };
 
   const handleTryAgain = () => {
-    // Reset state and go back to scenario
-    setShowCelebration(false);
     setCurrentTurn(1);
+    setFeedbackHistory([]);
+    setCurrentScreen('scenario');
   };
 
-  if (showCelebration) {
+  const handleFeedbackReceived = (turnData: any) => {
+    setFeedbackHistory(prev => [...prev, turnData]);
+  };
+
+  if (currentScreen === 'celebration') {
     return (
       <CelebrationPage 
-        scenarioName="Happy Hour - First Networking Event"
+        scenarioName={scenarioNames[scenarioId] || scenarioId}
         onBackToScenarios={handleBackToScenarios}
         onTryAgain={handleTryAgain}
+        feedbackHistory={feedbackHistory}
+      />
+    );
+  }
+
+  if (currentScreen === 'scenario') {
+    return (
+      <ScenarioPage 
+        scenarioId={scenarioId}
+        onComplete={handleComplete}
+        currentTurn={currentTurn}
+        onTurnChange={setCurrentTurn}
+        feedbackHistory={feedbackHistory}
+        onFeedbackReceived={handleFeedbackReceived}
       />
     );
   }
 
   return (
-    <ScenarioPage 
-      scenarioId={scenarioId}
-      onComplete={handleComplete}
-      currentTurn={currentTurn}
-      onTurnChange={setCurrentTurn}
+    <ScenarioLibrary 
+      onSelectScenario={handleSelectScenario}
+      completedScenarios={completedScenarios}
     />
   );
 }
