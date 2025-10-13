@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from pymongo import MongoClient
-from scenarios import get_turn_context, get_video_url
+from scenarios import get_turn_context, get_video_url, get_all_scenarios
 
 # If you use the OpenAI Python SDK for Whisper + GPT-5
 # pip install openai>=1.40.0
@@ -199,12 +199,9 @@ def health():
 
 @app.get("/scenarios")
 def list_scenarios():
-    """Return a small static list for now. In production, fetch from DB."""
-    return jsonify([
-        {"id": "coffee_shop", "title": "Order coffee at Starbucks"},
-        {"id": "hotel_checkin", "title": "Hotel check-in"},
-        {"id": "job_interview", "title": "Job interview: Tell me about yourself"},
-    ])
+    """Return all scenarios from centralized config."""
+    scenarios = get_all_scenarios()
+    return jsonify(scenarios)
 
 
 @app.get("/api/turn")
