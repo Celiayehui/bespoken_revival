@@ -1,0 +1,16 @@
+# Core
+flask
+flask-cors
+python-dotenv
+
+# Database
+pymongo
+
+# AWS
+boto3
+
+# OpenAI SDK (for Whisper + GPT-5 APIs)
+openai>=1.40.0
+
+# Utils
+werkzeug
