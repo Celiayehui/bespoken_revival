@@ -374,15 +374,6 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
           )}
         </div>
       </div>
-
-      {/* Scenario Complete Message */}
-      {isScenarioComplete && (
-        <div className="flex justify-center mt-auto mb-8">
-          <div className="w-[350px] h-12 bg-green-500 text-white rounded-lg flex items-center justify-center">
-            Scenario Complete!
-          </div>
-        </div>
-      )}
       </div>
     </>
   );
