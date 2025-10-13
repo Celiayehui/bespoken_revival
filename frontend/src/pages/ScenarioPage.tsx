@@ -47,33 +47,61 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     fetchTurnData();
   }, [currentTurn]);
 
+  useEffect(() => {
+    console.log('🔵 Status changed to:', status);
+  }, [status]);
+
   const startRecording = async () => {
     try {
+      console.log('🎙️ Starting recording...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      
+      // Try to find a supported mime type
+      let options: { mimeType?: string } = {};
+      if (MediaRecorder.isTypeSupported('audio/webm')) {
+        options = { mimeType: 'audio/webm' };
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        options = { mimeType: 'audio/mp4' };
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        options = { mimeType: 'audio/webm;codecs=opus' };
+      }
+      
+      console.log('📹 Creating MediaRecorder with options:', options);
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
+        console.log('📊 Data available, size:', event.data.size);
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('🛑 Recording stopped');
+        const audioBlob = new Blob(audioChunksRef.current, { type: options.mimeType || 'audio/webm' });
         setAudioBlob(audioBlob);
         console.log('Audio recorded, blob size:', audioBlob?.size, 'bytes');
         setStatus('recorded');
         
         // Stop all tracks to release microphone
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          console.log('🔇 Stopping track:', track.kind);
+          track.stop();
+        });
       };
 
-      mediaRecorder.start();
+      mediaRecorder.onerror = (event) => {
+        console.error('❌ MediaRecorder error:', event);
+      };
+
+      console.log('▶️ Starting MediaRecorder...');
+      mediaRecorder.start(1000); // Collect data every 1 second
+      console.log('✅ MediaRecorder started, setting status to recording');
       setStatus('recording');
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('❌ Error accessing microphone:', error);
       alert('Microphone access denied. Please allow microphone access and try again.');
     }
   };
@@ -190,30 +218,43 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
   };
 
   const getRecordButtonContent = () => {
+    console.log('🎨 getRecordButtonContent called with status:', status);
     switch (status) {
       case 'idle':
         return <Mic className="w-8 h-8 text-white" />;
       case 'recording':
-        return <Mic className="w-8 h-8 text-white animate-pulse" style={{ animation: 'voiceMemoPulse 1.5s ease-in-out infinite' }} />;
+        console.log('🎨 Rendering recording button content');
+        return (
+          <div className="flex flex-col items-center justify-center">
+            <Mic className="w-8 h-8 text-white animate-pulse" style={{ animation: 'voiceMemoPulse 1.5s ease-in-out infinite' }} />
+            <span className="text-xs text-white font-medium mt-1">STOP</span>
+          </div>
+        );
       case 'recorded':
         return <span className="text-sm text-white font-medium">SUBMIT</span>;
       case 'feedback':
         return <span className="text-sm text-white font-medium">NEXT</span>;
+      default:
+        console.warn('⚠️ Unknown status:', status);
+        return <Mic className="w-8 h-8 text-white" />;
     }
   };
 
   const getRecordButtonStyle = () => {
     const baseClasses = "w-[70px] h-[70px] flex items-center justify-center transition-all shadow-lg";
     
+    console.log('🎨 getRecordButtonStyle called with status:', status);
     switch (status) {
       case 'idle':
         return `${baseClasses} rounded-full bg-red-500 hover:bg-red-600`;
       case 'recording':
-        return `${baseClasses} rounded-2xl bg-red-600`;
+        console.log('🎨 Applying recording button styles');
+        return `${baseClasses} rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800`;
       case 'recorded':
       case 'feedback':
         return `${baseClasses} rounded-full bg-blue-500 hover:bg-blue-600`;
       default:
+        console.warn('⚠️ Unknown status for button style:', status);
         return `${baseClasses} rounded-full bg-gray-500`;
     }
   };
@@ -275,6 +316,17 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
           className={getRecordButtonStyle()}
           onClick={handleRecordClick}
           disabled={isLoading}
+          style={{
+            backgroundColor: status === 'recording' ? '#dc2626' : status === 'idle' ? '#ef4444' : status === 'recorded' || status === 'feedback' ? '#3b82f6' : '#6b7280',
+            borderRadius: status === 'recording' ? '0.5rem' : '9999px',
+            width: '70px',
+            height: '70px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+            cursor: 'pointer'
+          }}
         >
           {getRecordButtonContent()}
         </button>
