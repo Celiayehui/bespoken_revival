@@ -3,7 +3,7 @@ SCENARIOS = {
         "title": "Happy Hour - First Networking Event",
         "description": "Practice introducing yourself and making small talk at a work happy hour with new colleagues.",
         "difficulty": "Beginner",
-        "image_url": "https://images.unsplash.com/photo-1688975308004-6f10feed935f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBzaG9wJTIwYmFyaXN0YXxlbnwxfHx8fDE3NjAzMjIxMTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+        "image_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/preview_image/happy_hour",
         "turns": [
             {
                 "turn_index": 1,
@@ -27,7 +27,7 @@ SCENARIOS = {
         "title": "Leading a Meeting - Choosing a Brand Mascot",
         "description": "You're leading a team meeting to decide on a brand mascot for BeSpoken. Practice facilitating discussion, managing different opinions, and keeping the meeting on track.",
         "difficulty": "Intermediate",
-        "image_url": "https://images.unsplash.com/photo-1615914143778-1a1a6e50c5dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMG1lZXRpbmclMjBvZmZpY2V8ZW58MXx8fHwxNzYwMzI3MTQyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+        "image_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/preview_image/meeting",
         "turns": [
             {
                 "turn_index": 1,
@@ -57,15 +57,45 @@ SCENARIOS = {
         ]
     },
 
-    "hotel_checkin": {
-        "title": "Check In at a Hotel",
-        "description": "Master the essential phrases for checking in, asking about amenities, and getting your room key.",
+    "grocery_store": {
+        "title": "Check Out at Whole Foods",
+        "description": "Practice real-world checkout conversations at a Whole Foods-style grocery store.",
+        "difficulty": "Beginner",
+        "image_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/preview_image/grocery_shopping",
+        "turns": [
+            {
+                "turn_index": 1,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/grocery_store/grocery_store_1.mp4",
+                "transcript": "Hi there! Did you find everything okay today?"
+            },
+            {
+                "turn_index": 2,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/grocery_store/grocery_Store_2.mp4",
+                "transcript": "Do you want a bag?"
+            },
+            {
+                "turn_index": 3,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/grocery_store/grocery_store_3.mp4",
+                "transcript": "That’ll be twenty-three forty-five. How would you like to pay?"
+            },
+            {
+                "turn_index": 4,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/grocery_store/grocery_store_4.mp4",
+                "transcript": "Here’s your receipt. Have a great day!"
+            }
+        ]
+    },
+
+
+    "testing": {
+        "title": "Product testing",
+        "description": "Internal testing only, do not use.",
         "difficulty": "Beginner",
         "image_url": "https://images.unsplash.com/photo-1759038085950-1234ca8f5fed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob3RlbCUyMHJlY2VwdGlvbiUyMGRlc2t8ZW58MXx8fHwxNzYwMzcwODMxfDA&ixlib=rb-4.1.0&q=80&w=1080",
         "turns": [
-            {"turn_index": 1, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Hi there! I have a reservation under the name Ye."},
-            {"turn_index": 2, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Can you tell me what time breakfast is served and if Wi-Fi is included?"},
-            {"turn_index": 3, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Thank you! Could I also get an extra key card, please?"}
+            {"turn_index": 1, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/grocery_store_1.mp4", "transcript": "Did you find everything ok today?"},
+            # {"turn_index": 2, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Can you tell me what time breakfast is served and if Wi-Fi is included?"},
+            # {"turn_index": 3, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Thank you! Could I also get an extra key card, please?"}
         ]
     },
 
@@ -78,18 +108,6 @@ SCENARIOS = {
             {"turn_index": 1, "video_url": "", "transcript": "Excuse me, where’s the security checkpoint for Gate C?"},
             {"turn_index": 2, "video_url": "", "transcript": "How long is the line today? My flight boards in 30 minutes."},
             {"turn_index": 3, "video_url": "", "transcript": "Thanks! Also, where can I find a place to grab a quick coffee near Gate C12?"}
-        ]
-    },
-
-    "business_meeting": {
-        "title": "Join a Business Meeting",
-        "description": "Develop professional communication skills for introductions, presentations, and formal discussions.",
-        "difficulty": "Advanced",
-        "image_url": "https://images.unsplash.com/photo-1615914143778-1a1a6e50c5dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMG1lZXRpbmclMjBvZmZpY2V8ZW58MXx8fHwxNzYwMzI3MTQyfDA&ixlib=rb-4.1.0&q=80&w=1080",
-        "turns": [
-            {"turn_index": 1, "video_url": "", "transcript": "Good morning, everyone. Let’s start by reviewing last week’s action items."},
-            {"turn_index": 2, "video_url": "", "transcript": "That’s a great suggestion—can you elaborate on how it might impact the timeline?"},
-            {"turn_index": 3, "video_url": "", "transcript": "Thanks for the updates, team. Let’s summarize key decisions before we wrap up."}
         ]
     }
 }
