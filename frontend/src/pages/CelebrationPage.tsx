@@ -103,7 +103,7 @@ export default function CelebrationPage({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Turns completed</span>
-                <span className="text-gray-900 font-semibold">{feedbackHistory.length}/3</span>
+                <span className="text-gray-900 font-semibold">{feedbackHistory.length}</span>
               </div>
             </div>
           </Card>

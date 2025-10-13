@@ -328,7 +328,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
             controls
             autoPlay
             playsInline
-            className="w-full h-[200px] rounded-lg object-cover"
+            className="w-full h-[200px] rounded-lg object-contain bg-black"
           />
         ) : (
           <div className="w-full h-[200px] bg-gray-200 rounded-lg flex items-center justify-center">
