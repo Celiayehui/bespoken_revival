@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { CheckCircle } from 'lucide-react';
 
@@ -6,7 +7,7 @@ interface Scenario {
   title: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   description: string;
-  imageUrl: string;
+  image_url: string;
 }
 
 interface ScenarioLibraryProps {
@@ -15,43 +16,47 @@ interface ScenarioLibraryProps {
 }
 
 export default function ScenarioLibrary({ onSelectScenario, completedScenarios = new Set() }: ScenarioLibraryProps) {
-  const scenarios: Scenario[] = [
-    {
-      id: 'happy_hour',
-      title: 'Happy Hour - First Networking Event',
-      difficulty: 'Beginner',
-      description: 'Practice introducing yourself and making small talk at a work happy hour with new colleagues.',
-      imageUrl: 'https://images.unsplash.com/photo-1688975308004-6f10feed935f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2ZmZWUlMjBzaG9wJTIwYmFyaXN0YXxlbnwxfHx8fDE3NjAzMjIxMTl8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      id: 'restaurant_reservation',
-      title: 'Make a restaurant reservation',
-      difficulty: 'Intermediate',
-      description: 'Learn how to book a table, specify dietary requirements, and confirm details over the phone.',
-      imageUrl: 'https://images.unsplash.com/photo-1651209315802-12190ccfee26?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyZXN0YXVyYW50JTIwdGFibGUlMjBkaW5pbmd8ZW58MXx8fHwxNzYwMzQ4NzI2fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      id: 'hotel_checkin',
-      title: 'Check in at a hotel',
-      difficulty: 'Beginner',
-      description: 'Master the essential phrases for checking in, asking about amenities, and getting your room key.',
-      imageUrl: 'https://images.unsplash.com/photo-1759038085950-1234ca8f5fed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxob3RlbCUyMHJlY2VwdGlvbiUyMGRlc2t8ZW58MXx8fHwxNzYwMzcwODMxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      id: 'airport_navigation',
-      title: 'Navigate the airport',
-      difficulty: 'Advanced',
-      description: 'Practice handling security, customs, and finding your gate in an international airport setting.',
-      imageUrl: 'https://images.unsplash.com/photo-1706544132533-c2828a971fd0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhaXJwb3J0JTIwdGVybWluYWwlMjB0cmF2ZWx8ZW58MXx8fHwxNzYwMzcwODMyfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      id: 'business_meeting',
-      title: 'Join a business meeting',
-      difficulty: 'Advanced',
-      description: 'Develop professional communication skills for introductions, presentations, and formal discussions.',
-      imageUrl: 'https://images.unsplash.com/photo-1615914143778-1a1a6e50c5dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxidXNpbmVzcyUyMG1lZXRpbmclMjBvZmZpY2V8ZW58MXx8fHwxNzYwMzI3MTQyfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-  ];
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchScenarios = async () => {
+      try {
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${apiUrl}/scenarios`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch scenarios');
+        }
+        const data = await response.json();
+        setScenarios(data);
+      } catch (error) {
+        console.error('Error fetching scenarios:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchScenarios();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="w-[390px] h-[844px] bg-white mx-auto flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading scenarios...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (scenarios.length === 0) {
+    return (
+      <div className="w-[390px] h-[844px] bg-white mx-auto flex items-center justify-center">
+        <p className="text-gray-600">No scenarios available</p>
+      </div>
+    );
+  }
 
   const getDifficultyStyle = (difficulty: Scenario['difficulty']) => {
     switch (difficulty) {
@@ -100,7 +105,7 @@ export default function ScenarioLibrary({ onSelectScenario, completedScenarios =
                 {/* Preview Image */}
                 <div className="h-[160px] overflow-hidden">
                   <ImageWithFallback
-                    src={scenario.imageUrl}
+                    src={scenario.image_url}
                     alt={scenario.title}
                     className="w-full h-full object-cover"
                   />
