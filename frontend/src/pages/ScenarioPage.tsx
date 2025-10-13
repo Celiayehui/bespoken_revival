@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic } from 'lucide-react';
 
-type RecordingStatus = 'idle' | 'recording' | 'recorded' | 'feedback';
+type RecordingStatus = 'idle' | 'starting' | 'recording' | 'recorded' | 'feedback';
 
 interface ScenarioPageProps {
   scenarioId: string;
@@ -10,9 +10,10 @@ interface ScenarioPageProps {
   onTurnChange: (turn: number) => void;
   feedbackHistory: any[];
   onFeedbackReceived: (turnData: any) => void;
+  onBackToLibrary?: () => void;
 }
 
-export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTurnChange, feedbackHistory, onFeedbackReceived }: ScenarioPageProps) {
+export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTurnChange, feedbackHistory, onFeedbackReceived, onBackToLibrary }: ScenarioPageProps) {
   const [turnData, setTurnData] = useState<any>(null);
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
   
@@ -54,6 +55,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
   const startRecording = async () => {
     try {
       console.log('🎙️ Starting recording...');
+      setStatus('starting'); // Set to 'starting' immediately
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       // Try to find a supported mime type
@@ -94,15 +97,21 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
 
       mediaRecorder.onerror = (event) => {
         console.error('❌ MediaRecorder error:', event);
+        setStatus('idle'); // Reset to idle on error
       };
 
       console.log('▶️ Starting MediaRecorder...');
       mediaRecorder.start(1000); // Collect data every 1 second
-      console.log('✅ MediaRecorder started, setting status to recording');
-      setStatus('recording');
+      
+      // Wait longer for MediaRecorder to fully initialize and start capturing audio
+      setTimeout(() => {
+        console.log('✅ MediaRecorder ready, setting status to recording');
+        setStatus('recording');
+      }, 2500); // 2500ms delay to ensure recording has fully started
     } catch (error) {
       console.error('❌ Error accessing microphone:', error);
       alert('Microphone access denied. Please allow microphone access and try again.');
+      setStatus('idle'); // Reset to idle on error
     }
   };
 
@@ -205,6 +214,10 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       case 'idle':
         startRecording();
         break;
+      case 'starting':
+        // Do nothing - user should wait for recording to start
+        console.log('⏳ Recording is starting, please wait...');
+        break;
       case 'recording':
         stopRecording();
         break;
@@ -222,6 +235,14 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     switch (status) {
       case 'idle':
         return <Mic className="w-8 h-8 text-white" />;
+      case 'starting':
+        console.log('🎨 Rendering starting button content');
+        return (
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs text-white font-medium mt-1">FIRING UP</span>
+          </div>
+        );
       case 'recording':
         console.log('🎨 Rendering recording button content');
         return (
@@ -247,6 +268,9 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     switch (status) {
       case 'idle':
         return `${baseClasses} rounded-full bg-red-500 hover:bg-red-600`;
+      case 'starting':
+        console.log('🎨 Applying starting button styles');
+        return `${baseClasses} rounded-2xl bg-orange-500`;
       case 'recording':
         console.log('🎨 Applying recording button styles');
         return `${baseClasses} rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800`;
@@ -283,7 +307,10 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       <div className="w-[390px] h-[844px] bg-white mx-auto flex flex-col">
       {/* Company Logo */}
       <div className="flex justify-center pt-12 pb-8">
-        <div className="text-3xl font-bold text-blue-600">
+        <div 
+          className="text-3xl font-bold text-blue-600 cursor-pointer hover:text-blue-700 transition-colors"
+          onClick={onBackToLibrary}
+        >
           BeSpoken
         </div>
       </div>
@@ -317,15 +344,15 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
           onClick={handleRecordClick}
           disabled={isLoading}
           style={{
-            backgroundColor: status === 'recording' ? '#dc2626' : status === 'idle' ? '#ef4444' : status === 'recorded' || status === 'feedback' ? '#3b82f6' : '#6b7280',
-            borderRadius: status === 'recording' ? '0.5rem' : '9999px',
+            backgroundColor: status === 'recording' ? '#dc2626' : status === 'starting' ? '#f97316' : status === 'idle' ? '#ef4444' : status === 'recorded' || status === 'feedback' ? '#3b82f6' : '#6b7280',
+            borderRadius: status === 'recording' || status === 'starting' ? '0.5rem' : '9999px',
             width: '70px',
             height: '70px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            cursor: 'pointer'
+            cursor: status === 'starting' ? 'wait' : 'pointer'
           }}
         >
           {getRecordButtonContent()}

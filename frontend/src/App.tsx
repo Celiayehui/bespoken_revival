@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import ScenarioLibrary from './pages/ScenarioLibrary';
 import ScenarioPage from './pages/ScenarioPage';
 import CelebrationPage from './pages/CelebrationPage';
@@ -81,6 +81,7 @@ export default function App() {
         onTurnChange={setCurrentTurn}
         feedbackHistory={feedbackHistory}
         onFeedbackReceived={handleFeedbackReceived}
+        onBackToLibrary={handleBackToScenarios}
       />
     );
   }
