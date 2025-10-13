@@ -7,12 +7,14 @@ interface CelebrationPageProps {
   scenarioName: string;
   onBackToScenarios: () => void;
   onTryAgain: () => void;
+  feedbackHistory: any[];
 }
 
 export default function CelebrationPage({ 
   scenarioName, 
   onBackToScenarios, 
-  onTryAgain 
+  onTryAgain,
+  feedbackHistory 
 }: CelebrationPageProps) {
   // Confetti particles
   const confettiColors = ['#3b82f6', '#10b981', '#fbbf24', '#f59e0b', '#ef4444'];
@@ -101,7 +103,7 @@ export default function CelebrationPage({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Turns completed</span>
-                <span className="text-gray-900 font-semibold">8/8</span>
+                <span className="text-gray-900 font-semibold">{feedbackHistory.length}/3</span>
               </div>
             </div>
           </Card>
@@ -115,51 +117,33 @@ export default function CelebrationPage({
               <h3 className="text-lg font-bold text-gray-900">Feedback Summary</h3>
             </div>
             <div className="space-y-4 max-h-[300px] overflow-y-auto">
-              {/* Placeholder feedback items */}
-              {[
-                {
-                  id: 1,
-                  question: "How would you greet the barista?",
-                  youSaid: "Hello, I want coffee please",
-                  insteadTry: "Hi! I'd like to order a coffee, please",
-                  tips: "Use 'I'd like to' for polite requests in service situations"
-                },
-                {
-                  id: 2,
-                  question: "What size would you like?",
-                  youSaid: "Big size",
-                  insteadTry: "A large, please",
-                  tips: "Coffee sizes are typically: small, medium, large, or grande/venti"
-                },
-                {
-                  id: 3,
-                  question: "Would you like room for cream?",
-                  youSaid: "Yes, room",
-                  insteadTry: "Yes, please leave some room",
-                  tips: "Great! You can also say 'a little room' or 'room for cream'"
-                }
-              ].map((item) => (
-                <div key={item.id} className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+              {/* Actual feedback items from practice session */}
+              {feedbackHistory.length > 0 ? feedbackHistory.map((item) => (
+                <div key={item.turn_index} className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
                   <div className="mb-3">
-                    <span className="text-sm font-bold text-gray-900">Question {item.id}:</span>
-                    <p className="text-sm text-gray-700 mt-1">{item.question}</p>
+                    <span className="text-sm font-bold text-gray-900">Turn {item.turn_index}:</span>
+                    <p className="text-sm text-gray-700 mt-1">{item.turn_transcript}</p>
                   </div>
                   <div className="space-y-2 ml-2">
                     <div>
                       <span className="text-xs font-semibold text-gray-600">You said:</span>
-                      <p className="text-sm text-gray-700 mt-0.5">"{item.youSaid}"</p>
+                      <p className="text-sm text-gray-700 mt-0.5">"{item.transcript}"</p>
                     </div>
-                    <div>
-                      <span className="text-xs font-semibold text-gray-600">Instead try:</span>
-                      <p className="text-sm text-gray-700 mt-0.5">"{item.insteadTry}"</p>
-                    </div>
+                    {item.feedback.rewrite && item.feedback.rewrite !== 'none' && (
+                      <div>
+                        <span className="text-xs font-semibold text-gray-600">Try instead:</span>
+                        <p className="text-sm text-gray-700 mt-0.5">"{item.feedback.rewrite}"</p>
+                      </div>
+                    )}
                     <div>
                       <span className="text-xs font-semibold text-blue-600">Tips:</span>
-                      <p className="text-sm text-gray-700 mt-0.5">{item.tips}</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{item.feedback.tip}</p>
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-4">No feedback available yet</p>
+              )}
             </div>
           </Card>
         </div>

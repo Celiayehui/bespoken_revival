@@ -8,15 +8,18 @@ interface ScenarioPageProps {
   onComplete: () => void;
   currentTurn: number;
   onTurnChange: (turn: number) => void;
+  feedbackHistory: any[];
+  onFeedbackReceived: (turnData: any) => void;
 }
 
-export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTurnChange }: ScenarioPageProps) {
+export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTurnChange, feedbackHistory, onFeedbackReceived }: ScenarioPageProps) {
   const [turnData, setTurnData] = useState<any>(null);
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
   
   const [status, setStatus] = useState<RecordingStatus>('idle');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [feedback, setFeedback] = useState<string>('');
+  const [feedbackData, setFeedbackData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -115,7 +118,20 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       }
       
       setFeedback(formattedFeedback);
+      setFeedbackData({
+        transcript: data.transcript,
+        feedback: data.feedback,
+        turn_transcript: turnData?.turn_transcript || ''
+      });
       setStatus('feedback');
+      
+      // Store feedback data in history
+      onFeedbackReceived({
+        turn_index: currentTurn,
+        transcript: data.transcript,
+        feedback: data.feedback,
+        turn_transcript: turnData?.turn_transcript || ''
+      });
       
       // Check if the next turn exists
       const checkNextTurn = async () => {
@@ -124,16 +140,12 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
           const nextTurnResponse = await fetch(`${apiUrl}/api/turn?scenario_id=${scenarioId}&turn_index=${currentTurn + 1}`);
           if (nextTurnResponse.status === 404) {
             // No next turn exists, this was the final turn
-            setTimeout(() => {
-              onComplete();
-            }, 2000); // Wait 2 seconds to let user see the feedback
+            setIsScenarioComplete(true);
           }
         } catch (error) {
           console.error('Error checking next turn:', error);
           // If there's an error checking, assume this might be the final turn
-          setTimeout(() => {
-            onComplete();
-          }, 2000);
+          setIsScenarioComplete(true);
         }
       };
       
@@ -155,6 +167,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       setStatus('idle');
       setAudioBlob(null);
       setFeedback('');
+      setFeedbackData(null);
     }
   };
 
@@ -269,20 +282,43 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
 
       {/* Feedback Section */}
       <div className="px-5 mb-8">
-        <div className="w-full h-[250px] bg-gray-100 rounded-xl p-6 flex items-center justify-center">
+        <div className="w-full min-h-[250px] bg-white rounded-xl border border-gray-200 p-6">
           {isLoading ? (
-            <div className="text-center">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-              <p className="text-gray-600">Processing your recording...</p>
+            <div className="flex items-center justify-center h-[200px]">
+              <div className="text-center">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                <p className="text-gray-600">Processing your recording...</p>
+              </div>
             </div>
-          ) : feedback ? (
-            <p className="text-gray-800 text-center leading-relaxed">
-              {feedback}
-            </p>
+          ) : feedbackData ? (
+            <div className="space-y-4">
+              <div>
+                <span className="text-sm font-semibold text-gray-700">You said:</span>
+                <p className="text-gray-900 mt-1 p-3 bg-gray-50 rounded-lg border-l-4 border-gray-300">
+                  "{feedbackData.transcript}"
+                </p>
+              </div>
+              {feedbackData.feedback.rewrite && feedbackData.feedback.rewrite !== 'none' && (
+                <div>
+                  <span className="text-sm font-semibold text-gray-700">Try instead:</span>
+                  <p className="text-gray-900 mt-1 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                    "{feedbackData.feedback.rewrite}"
+                  </p>
+                </div>
+              )}
+              <div>
+                <span className="text-sm font-semibold text-blue-600">Tips:</span>
+                <p className="text-gray-700 mt-1 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                  {feedbackData.feedback.tip}
+                </p>
+              </div>
+            </div>
           ) : (
-            <p className="text-gray-500 text-center">
-              Your feedback will appear here...
-            </p>
+            <div className="flex items-center justify-center h-[200px]">
+              <p className="text-gray-500 text-center">
+                Your feedback will appear here...
+              </p>
+            </div>
           )}
         </div>
       </div>
