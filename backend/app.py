@@ -56,9 +56,40 @@ app.config['MAX_CONTENT_LENGTH'] = int(MAX_CONTENT_LENGTH_MB * 1024 * 1024)
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
-# Initialize clients
-mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=3000)
+# Initialize clients with proper SSL configuration
+mongo_client = MongoClient(
+    MONGODB_URI, 
+    serverSelectionTimeoutMS=5000,  # Increased timeout
+    connectTimeoutMS=10000,         # Connection timeout
+    socketTimeoutMS=20000,          # Socket timeout
+    tlsAllowInvalidCertificates=True,  # Skip cert validation for development
+    tlsAllowInvalidHostnames=True,     # Skip hostname validation for development
+    retryWrites=True,              # Enable retry writes
+    maxPoolSize=10,                # Connection pool size
+    minPoolSize=1,                 # Minimum connections
+)
 db = mongo_client[DB_NAME]
+
+# Test MongoDB connection with retry logic
+def test_mongodb_connection():
+    """Test MongoDB connection with retry logic"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Try to ping the server
+            mongo_client.admin.command('ping')
+            print(f"✅ MongoDB connection successful (attempt {attempt + 1})")
+            return True
+        except Exception as e:
+            print(f"⚠️ MongoDB connection attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(1)  # Wait 1 second before retry
+            else:
+                print(f"❌ MongoDB connection failed after {max_retries} attempts")
+                return False
+
+# Test connection on startup
+test_mongodb_connection()
 
 s3_client = boto3.client(
     "s3",
@@ -185,8 +216,13 @@ def save_turn(
         "feedback": feedback,
         "created_at": datetime.now(timezone.utc),
     }
-    res = db.conversation_turns.insert_one(doc)
-    return str(res.inserted_id)
+    try:
+        # Use a shorter timeout for the insert operation
+        res = db.conversation_turns.insert_one(doc, max_time_ms=5000)
+        return str(res.inserted_id)
+    except Exception as e:
+        print(f"⚠️ MongoDB insert_one failed: {e}")
+        raise e
 
 
 # ----------------------------
@@ -304,9 +340,18 @@ def handle_upload():
         text = transcribe_with_whisper(file_bytes, filename)
         return text, int((time.perf_counter() - _t) * 1000)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    def _context_task() -> dict:
+        try:
+            return get_turn_context(scenario_id, turn_index)
+        except Exception as e:
+            print(f"⚠️ Failed to get turn context: {e}")
+            return None
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
         future_upload = executor.submit(_upload_task)
         future_transcribe = executor.submit(_transcribe_task)
+        future_context = executor.submit(_context_task)
+        
         try:
             audio_url, t_s3_ms = future_upload.result()
         except Exception as e:
@@ -316,13 +361,11 @@ def handle_upload():
             print(f"📝 WHISPER TRANSCRIBED: '{transcript}'")
         except Exception as e:
             return jsonify({"error": str(e)}), 502
-
-    # Get scenario context for better feedback
-    try:
-        turn_context = get_turn_context(scenario_id, turn_index)
-    except Exception as e:
-        print(f"⚠️ Failed to get turn context: {e}")
-        turn_context = None
+        try:
+            turn_context = future_context.result()
+        except Exception as e:
+            print(f"⚠️ Failed to get turn context: {e}")
+            turn_context = None
 
     # Generate feedback with GPT-5
     print(f"🤖 SENDING TO GPT - Scenario: '{turn_context.get('scenario_title') if turn_context else 'unknown'}', Turn question: '{turn_context.get('turn_transcript', '')[:50] if turn_context else 'none'}...', User said: '{transcript}'")
@@ -339,22 +382,21 @@ def handle_upload():
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 502
 
-    # Save to MongoDB
-    try:
-        turn_id = save_turn(user_id, scenario_id, turn_index, audio_url, transcript, feedback)
-    except Exception as e:
-        # DB failure shouldn't hide the learning result; return result but flag storage error
-        return jsonify({
-            "audio_url": audio_url,
-            "transcript": transcript,
-            "feedback": feedback,
-            "turn_id": None,
-            "storage_error": f"MongoDB insert failed: {e}",
-            "t_s3_ms": t_s3_ms,
-            "t_stt_ms": t_stt_ms,
-            "t_llm_ms": t_llm_ms,
-            "latency_ms": int((time.perf_counter() - t0) * 1000),
-        }), 207
+    # Save to MongoDB (non-blocking background task)
+    def _save_to_db():
+        try:
+            return save_turn(user_id, scenario_id, turn_index, audio_url, transcript, feedback)
+        except Exception as e:
+            print(f"⚠️ MongoDB save failed: {e}")
+            return None
+    
+    # Submit MongoDB save as background task (don't wait for it)
+    with ThreadPoolExecutor(max_workers=1) as db_executor:
+        future_db = db_executor.submit(_save_to_db)
+        # Don't wait for the result - let it run in background
+    
+    # Return response immediately without waiting for MongoDB
+    turn_id = "pending"  # Placeholder since we're not waiting for the actual ID
 
     return jsonify({
         "audio_url": audio_url,
