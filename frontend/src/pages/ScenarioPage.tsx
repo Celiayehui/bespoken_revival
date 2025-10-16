@@ -101,13 +101,13 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       };
 
       console.log('▶️ Starting MediaRecorder...');
-      mediaRecorder.start(1000); // Collect data every 1 second
+      mediaRecorder.start(100); // Collect data every 1 second
       
       // Wait longer for MediaRecorder to fully initialize and start capturing audio
       setTimeout(() => {
         console.log('✅ MediaRecorder ready, setting status to recording');
         setStatus('recording');
-      }, 2500); // 2500ms delay to ensure recording has fully started
+      }, 800); // 2500ms delay to ensure recording has fully started
     } catch (error) {
       console.error('❌ Error accessing microphone:', error);
       alert('Microphone access denied. Please allow microphone access and try again.');
