@@ -25,6 +25,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const fetchTurnData = async () => {
     try {
@@ -52,10 +53,27 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     console.log('🔵 Status changed to:', status);
   }, [status]);
 
+  // Handle video playback when turn data changes
+  useEffect(() => {
+    if (turnData?.video_url && videoRef.current) {
+      // Only play the video if we're not currently recording or starting to record
+      if (status === 'idle' || status === 'feedback') {
+        videoRef.current.play().catch(error => {
+          console.log('Video autoplay prevented:', error);
+        });
+      }
+    }
+  }, [turnData, status]);
+
   const startRecording = async () => {
     try {
       console.log('🎙️ Starting recording...');
       setStatus('starting'); // Set to 'starting' immediately
+      
+      // Pause video to prevent it from replaying when microphone permission is granted
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
@@ -101,13 +119,13 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       };
 
       console.log('▶️ Starting MediaRecorder...');
-      mediaRecorder.start(100); // Collect data every 1 second
+      mediaRecorder.start(1000); // Collect data every 1 second
       
       // Wait longer for MediaRecorder to fully initialize and start capturing audio
       setTimeout(() => {
         console.log('✅ MediaRecorder ready, setting status to recording');
         setStatus('recording');
-      }, 800); // 2500ms delay to ensure recording has fully started
+      }, 2500); // 2500ms delay to ensure recording has fully started
     } catch (error) {
       console.error('❌ Error accessing microphone:', error);
       alert('Microphone access denied. Please allow microphone access and try again.');
@@ -324,9 +342,9 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       <div className="px-5 mb-8">
         {turnData?.video_url ? (
           <video 
+            ref={videoRef}
             src={turnData.video_url}
             controls
-            autoPlay
             playsInline
             className="w-full h-[200px] rounded-lg object-contain bg-black"
           />
