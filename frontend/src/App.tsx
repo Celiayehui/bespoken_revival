@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import ScenarioLibrary from './pages/ScenarioLibrary';
 import ScenarioPage from './pages/ScenarioPage';
 import CelebrationPage from './pages/CelebrationPage';
+import SignInPage from './pages/SignInPage';
 
-type Screen = 'library' | 'scenario' | 'celebration';
+type Screen = 'signIn' | 'library' | 'scenario' | 'celebration';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('library');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('signIn');
   const [scenarioId, setScenarioId] = useState('coffee_shop');
   const [currentTurn, setCurrentTurn] = useState(1);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
@@ -60,6 +61,26 @@ export default function App() {
   const handleFeedbackReceived = (turnData: any) => {
     setFeedbackHistory(prev => [...prev, turnData]);
   };
+
+  const handleSignInWithGoogle = () => {
+    // TODO: Implement Google OAuth flow
+    // For now, just navigate to library
+    setCurrentScreen('library');
+  };
+
+  const handleContinueAsGuest = () => {
+    // Navigate to library without authentication
+    setCurrentScreen('library');
+  };
+
+  if (currentScreen === 'signIn') {
+  return (
+      <SignInPage 
+        onSignInWithGoogle={handleSignInWithGoogle}
+        onContinueAsGuest={handleContinueAsGuest}
+      />
+    );
+  }
 
   if (currentScreen === 'celebration') {
     return (
