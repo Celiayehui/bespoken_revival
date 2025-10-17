@@ -14,6 +14,8 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from pymongo import MongoClient
 from scenarios import get_turn_context, get_video_url, get_all_scenarios
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 # If you use the OpenAI Python SDK for Whisper + GPT-5
 # pip install openai>=1.40.0
@@ -408,6 +410,98 @@ def handle_upload():
         "t_llm_ms": t_llm_ms,
         "latency_ms": int((time.perf_counter() - t0) * 1000),
     })
+
+
+# ----------------------------
+# Google OAuth Authentication
+# ----------------------------
+@app.post("/auth/google/signin")
+def google_signin():
+    """
+    POST /auth/google/signin
+    Accepts a Google ID token from the frontend and verifies it.
+    
+    Request body:
+      - credential: str (Google ID token)
+    
+    Returns:
+      - user_id: str
+      - email: str
+      - name: str
+    """
+    try:
+        # Get the credential from request body
+        data = request.get_json()
+        if not data or 'credential' not in data:
+            return jsonify({"error": "Missing 'credential' field in request body"}), 400
+        
+        credential = data['credential']
+        if not credential:
+            return jsonify({"error": "Credential cannot be empty"}), 400
+        
+        # Verify the Google ID token
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                credential, 
+                google_requests.Request(), 
+                GOOGLE_CLIENT_ID
+            )
+        except ValueError as e:
+            return jsonify({"error": f"Invalid Google ID token: {str(e)}"}), 401
+        
+        # Extract user information
+        google_id = idinfo.get('sub')
+        email = idinfo.get('email')
+        name = idinfo.get('name')
+        
+        if not google_id or not email:
+            return jsonify({"error": "Missing required user information in token"}), 400
+        
+        # Create or find user in MongoDB
+        try:
+            user_doc = {
+                "google_id": google_id,
+                "email": email,
+                "name": name or email.split('@')[0],  # Use email prefix if name not available
+                "created_at": datetime.now(timezone.utc),
+                "last_signin": datetime.now(timezone.utc)
+            }
+            
+            # Use upsert to create or update user
+            result = db.users.update_one(
+                {"google_id": google_id},
+                {
+                    "$set": {
+                        "email": email,
+                        "name": name or email.split('@')[0],
+                        "last_signin": datetime.now(timezone.utc)
+                    },
+                    "$setOnInsert": {
+                        "created_at": datetime.now(timezone.utc)
+                    }
+                },
+                upsert=True
+            )
+            
+            # Get the user document
+            user = db.users.find_one({"google_id": google_id})
+            user_id = str(user['_id'])
+            
+            print(f"✅ User authenticated: {email} (ID: {user_id})")
+            
+            return jsonify({
+                "user_id": user_id,
+                "email": email,
+                "name": name or email.split('@')[0]
+            })
+            
+        except Exception as e:
+            print(f"⚠️ MongoDB user creation failed: {e}")
+            return jsonify({"error": "Failed to create/find user in database"}), 500
+            
+    except Exception as e:
+        print(f"⚠️ Google sign-in error: {e}")
+        return jsonify({"error": "Authentication failed"}), 500
 
 
 # ----------------------------
