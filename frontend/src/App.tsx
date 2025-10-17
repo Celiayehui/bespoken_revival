@@ -11,6 +11,7 @@ export default function App() {
   const [scenarioId, setScenarioId] = useState('coffee_shop');
   const [currentTurn, setCurrentTurn] = useState(1);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
+  const [user, setUser] = useState<{user_id: string, email: string, name: string} | null>(null);
   
   const [completedScenarios, setCompletedScenarios] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
@@ -25,6 +26,56 @@ export default function App() {
       localStorage.setItem('bespoken-completed-scenarios', JSON.stringify(Array.from(completedScenarios)));
     }
   }, [completedScenarios]);
+
+  // Initialize Google Identity Services once when component mounts
+  useEffect(() => {
+    const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+    
+    if (!clientId) {
+      console.warn('Google Client ID not configured');
+      return;
+    }
+
+    // Wait for Google Identity Services to load
+    const initializeGoogle = () => {
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+        const google = (window as any).google;
+        
+        try {
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+          
+          // Render the Google Sign-In button
+          const buttonDiv = document.getElementById('googleSignInButton');
+          if (buttonDiv) {
+            google.accounts.id.renderButton(buttonDiv, {
+              theme: "outline",
+              size: "large",
+              text: "signin_with",
+              width: 240
+            });
+            console.log('Google Sign-In button rendered');
+          } else {
+            console.warn('Google Sign-In button div not found');
+          }
+          
+          console.log('Google Identity Services initialized');
+        } catch (error) {
+          console.error('Failed to initialize Google Identity Services:', error);
+        }
+      } else {
+        // Retry after a short delay if Google services aren't loaded yet
+        setTimeout(initializeGoogle, 100);
+      }
+    };
+
+    // Start initialization
+    initializeGoogle();
+  }, []); // Empty dependency array - run only once on mount
 
   // Map scenario IDs to display names
   const scenarioNames: Record<string, string> = {
@@ -62,10 +113,45 @@ export default function App() {
     setFeedbackHistory(prev => [...prev, turnData]);
   };
 
-  const handleSignInWithGoogle = () => {
-    // TODO: Implement Google OAuth flow
-    // For now, just navigate to library
-    setCurrentScreen('library');
+
+  const handleCredentialResponse = async (response: any) => {
+    try {
+      console.log('Google credential received:', response.credential);
+      
+      // Send credential to backend
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+      const backendResponse = await fetch(`${apiUrl}/auth/google/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          credential: response.credential
+        })
+      });
+
+      if (!backendResponse.ok) {
+        const errorData = await backendResponse.json();
+        throw new Error(errorData.error || 'Authentication failed');
+      }
+
+      const userData = await backendResponse.json();
+      console.log('User authenticated:', userData);
+      
+      // Save user info in state
+      setUser({
+        user_id: userData.user_id,
+        email: userData.email,
+        name: userData.name
+      });
+      
+      // Navigate to library
+      setCurrentScreen('library');
+      
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      alert(`Sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleContinueAsGuest = () => {
@@ -76,7 +162,6 @@ export default function App() {
   if (currentScreen === 'signIn') {
   return (
       <SignInPage 
-        onSignInWithGoogle={handleSignInWithGoogle}
         onContinueAsGuest={handleContinueAsGuest}
       />
     );
