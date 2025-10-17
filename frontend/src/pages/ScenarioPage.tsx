@@ -148,7 +148,10 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       // Create FormData with required fields
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
-      formData.append('user_id', 'test_user');
+      // Get user_id from Google authentication stored in localStorage after sign-in
+      const userData = localStorage.getItem('bespoken-user');
+      const userId = userData ? JSON.parse(userData).user_id : 'guest_user';
+      formData.append('user_id', userId);
       formData.append('scenario_id', scenarioId);
       formData.append('turn_index', currentTurn.toString());
       
