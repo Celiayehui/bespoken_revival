@@ -7,11 +7,26 @@ import SignInPage from './pages/SignInPage';
 type Screen = 'signIn' | 'library' | 'scenario' | 'celebration';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('signIn');
+  const [currentScreen, setCurrentScreen] = useState<Screen>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bespoken-user');
+      const screen = saved ? 'library' : 'signIn';
+      console.log('Initializing currentScreen:', screen, 'based on user:', !!saved);
+      return screen;
+    }
+    return 'signIn';
+  });
   const [scenarioId, setScenarioId] = useState('coffee_shop');
   const [currentTurn, setCurrentTurn] = useState(1);
   const [feedbackHistory, setFeedbackHistory] = useState<any[]>([]);
-  const [user, setUser] = useState<{user_id: string, email: string, name: string} | null>(null);
+  const [user, setUser] = useState<{user_id: string, email: string, name: string} | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bespoken-user');
+      console.log('Loading user from localStorage:', saved);
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
   
   const [completedScenarios, setCompletedScenarios] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
@@ -26,6 +41,19 @@ export default function App() {
       localStorage.setItem('bespoken-completed-scenarios', JSON.stringify(Array.from(completedScenarios)));
     }
   }, [completedScenarios]);
+
+  // Persist user state to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (user) {
+        console.log('Saving user to localStorage:', user);
+        localStorage.setItem('bespoken-user', JSON.stringify(user));
+      } else {
+        console.log('Removing user from localStorage');
+        localStorage.removeItem('bespoken-user');
+      }
+    }
+  }, [user]);
 
   // Initialize Google Identity Services once when component mounts
   useEffect(() => {
