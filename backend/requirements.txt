@@ -1,8 +1,12 @@
-flask
-flask-cors
+Flask==3.0.3
+gunicorn==23.0.0
+google-auth==2.34.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+requests==2.32.3
+Flask-Cors==5.0.0
+python-dotenv==1.0.1
+pymongo==4.10.1
 openai
 boto3
-pymongo
-python-dotenv
 werkzeug
-gunicorn
