@@ -62,15 +62,14 @@ REDIRECT_URI = os.getenv("REDIRECT_URI", "https://bespoken-frontend.onrender.com
 
 # Initialize clients with proper SSL configuration
 mongo_client = MongoClient(
-    MONGODB_URI, 
-    serverSelectionTimeoutMS=5000,  # Increased timeout
-    connectTimeoutMS=10000,         # Connection timeout
-    socketTimeoutMS=20000,          # Socket timeout
-    tlsAllowInvalidCertificates=True,  # Skip cert validation for development
-    tlsAllowInvalidHostnames=True,     # Skip hostname validation for development
-    retryWrites=True,              # Enable retry writes
-    maxPoolSize=10,                # Connection pool size
-    minPoolSize=1,                 # Minimum connections
+    MONGODB_URI,
+    serverSelectionTimeoutMS=30000,
+    connectTimeoutMS=30000,
+    socketTimeoutMS=30000,
+    retryWrites=True,
+    tls=True,
+    tlsAllowInvalidCertificates=False,
+    tlsAllowInvalidHostnames=False
 )
 db = mongo_client[DB_NAME]
 
@@ -221,8 +220,7 @@ def save_turn(
         "created_at": datetime.now(timezone.utc),
     }
     try:
-        # Use a shorter timeout for the insert operation
-        res = db.conversation_turns.insert_one(doc, max_time_ms=5000)
+        res = db.conversation_turns.insert_one(doc)
         return str(res.inserted_id)
     except Exception as e:
         print(f"⚠️ MongoDB insert_one failed: {e}")
