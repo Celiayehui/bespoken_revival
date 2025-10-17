@@ -162,3 +162,19 @@ def get_all_scenarios():
         }
         for scenario_id, data in SCENARIOS.items()
     ]
+
+def get_scenario_data(scenario_id):
+    """Get full scenario data by ID."""
+    return SCENARIOS.get(scenario_id)
+
+def get_turn_question(scenario_id, turn_index):
+    """Get the turn question (transcript) for a specific turn in a scenario."""
+    scenario = SCENARIOS.get(scenario_id)
+    if not scenario or 'turns' not in scenario:
+        return None
+    
+    for turn in scenario['turns']:
+        if turn.get('turn_index') == turn_index:
+            return turn.get('transcript')
+    
+    return None

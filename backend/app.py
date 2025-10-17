@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from pymongo import MongoClient
-from scenarios import get_turn_context, get_video_url, get_all_scenarios
+from scenarios import get_turn_context, get_video_url, get_all_scenarios, get_scenario_data, get_turn_question
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -526,6 +526,206 @@ def verify_google_id_token():
     """
     return jsonify({"message": "Verify Google ID token here and create a session/JWT."}), 501
 
+
+# ----------------------------
+# Analytics Endpoints
+# ----------------------------
+
+@app.get("/analytics/users")
+def get_analytics_users():
+    """Returns list of all unique user IDs and their activity count"""
+    try:
+        # Aggregate user activity counts
+        pipeline = [
+            {"$group": {
+                "_id": "$user_id",
+                "activity_count": {"$sum": 1},
+                "last_activity": {"$max": "$created_at"}
+            }},
+            {"$sort": {"activity_count": -1}}
+        ]
+        
+        users = list(db.conversation_turns.aggregate(pipeline))
+        
+        # Format response
+        result = []
+        for user in users:
+            result.append({
+                "user_id": user["_id"],
+                "activity_count": user["activity_count"],
+                "last_activity": user["last_activity"].isoformat() if user["last_activity"] else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": result,
+            "total_users": len(result)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in /analytics/users: {e}")
+        return jsonify({
+            "success": False,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e)
+        }), 500
+
+@app.get("/analytics/user/<user_id>")
+def get_analytics_user(user_id):
+    """Returns all conversation turns for a specific user, sorted by timestamp"""
+    try:
+        # Find all turns for the user, sorted by timestamp
+        turns = list(db.conversation_turns.find(
+            {"user_id": user_id}
+        ).sort("created_at", -1))
+        
+        # Format response
+        result = []
+        for turn in turns:
+            result.append({
+                "turn_id": str(turn["_id"]),
+                "scenario_id": turn.get("scenario_id"),
+                "turn_index": turn.get("turn_index"),
+                "timestamp": turn.get("created_at").isoformat() if turn.get("created_at") else None,
+                "transcript": turn.get("transcript"),
+                "has_feedback": bool(turn.get("feedback"))
+            })
+        
+        return jsonify({
+            "success": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "user_id": user_id,
+            "data": result,
+            "total_turns": len(result)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in /analytics/user/{user_id}: {e}")
+        return jsonify({
+            "success": False,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e)
+        }), 500
+
+@app.get("/analytics/scenarios")
+def get_analytics_scenarios():
+    """Returns scenario usage statistics (count of turns per scenario)"""
+    try:
+        # Aggregate scenario usage
+        pipeline = [
+            {"$group": {
+                "_id": "$scenario_id",
+                "turn_count": {"$sum": 1},
+                "unique_users": {"$addToSet": "$user_id"},
+                "last_used": {"$max": "$created_at"}
+            }},
+            {"$addFields": {
+                "unique_user_count": {"$size": "$unique_users"}
+            }},
+            {"$sort": {"turn_count": -1}}
+        ]
+        
+        scenarios = list(db.conversation_turns.aggregate(pipeline))
+        
+        # Format response
+        result = []
+        for scenario in scenarios:
+            result.append({
+                "scenario_id": scenario["_id"],
+                "turn_count": scenario["turn_count"],
+                "unique_user_count": scenario["unique_user_count"],
+                "last_used": scenario["last_used"].isoformat() if scenario["last_used"] else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": result,
+            "total_scenarios": len(result)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in /analytics/scenarios: {e}")
+        return jsonify({
+            "success": False,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e)
+        }), 500
+
+@app.get("/analytics/recent")
+def get_analytics_recent():
+    """Returns the most recent conversation turns across all users with scenario data"""
+    try:
+        # Parse limit parameter
+        limit_param = request.args.get('limit', '20')
+        
+        if limit_param.lower() == 'all':
+            limit = 0  # No limit
+        else:
+            try:
+                limit = int(limit_param)
+                if limit < 1:
+                    limit = 20
+                elif limit > 1000:
+                    limit = 1000
+            except ValueError:
+                limit = 20
+        
+        # Find most recent turns
+        query = db.conversation_turns.find().sort("created_at", -1)
+        if limit > 0:
+            query = query.limit(limit)
+        
+        turns = list(query)
+        
+        # Format response with scenario data
+        result = []
+        for turn in turns:
+            scenario_id = turn.get("scenario_id")
+            turn_index = turn.get("turn_index")
+            
+            # Get scenario data
+            scenario_data = get_scenario_data(scenario_id) if scenario_id else None
+            scenario_name = scenario_data.get("title") if scenario_data else None
+            
+            # Get turn question
+            turn_question = get_turn_question(scenario_id, turn_index) if scenario_id and turn_index else None
+            
+            # Format feedback object
+            feedback_data = turn.get("feedback", {})
+            feedback = {
+                "overall_feedback": feedback_data.get("tip"),  # GPT returns 'tip' not 'overall_feedback'
+                "try_instead": feedback_data.get("rewrite"),  # GPT returns 'rewrite' not 'try_instead'
+                "tips": feedback_data.get("tip")  # Use 'tip' for tips field
+            } if feedback_data else None
+            
+            result.append({
+                "user_id": turn.get("user_id"),
+                "scenario_id": scenario_id,
+                "scenario_name": scenario_name,
+                "turn_index": turn_index,
+                "turn_question": turn_question,
+                "transcript": turn.get("transcript"),
+                "feedback": feedback,
+                "turn_id": str(turn["_id"]),
+                "timestamp": turn.get("created_at").isoformat() if turn.get("created_at") else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "data": result,
+            "count": len(result)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in /analytics/recent: {e}")
+        return jsonify({
+            "success": False,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e)
+        }), 500
 
 # ----------------------------
 # Run
