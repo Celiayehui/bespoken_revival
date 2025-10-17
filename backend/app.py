@@ -57,6 +57,8 @@ app.config['MAX_CONTENT_LENGTH'] = int(MAX_CONTENT_LENGTH_MB * 1024 * 1024)
 # Optional: Google OAuth placeholders (handled in a separate auth module or proxy)
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+# OAuth redirect URI for Google sign-in flow
+REDIRECT_URI = os.getenv("REDIRECT_URI", "https://bespoken-frontend.onrender.com/auth/callback")
 
 # Initialize clients with proper SSL configuration
 mongo_client = MongoClient(
