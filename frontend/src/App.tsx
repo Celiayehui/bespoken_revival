@@ -3,8 +3,9 @@ import ScenarioLibrary from './pages/ScenarioLibrary';
 import ScenarioPage from './pages/ScenarioPage';
 import CelebrationPage from './pages/CelebrationPage';
 import SignInPage from './pages/SignInPage';
+import AccountPage from './pages/AccountPage';
 
-type Screen = 'signIn' | 'library' | 'scenario' | 'celebration';
+type Screen = 'signIn' | 'library' | 'scenario' | 'celebration' | 'account';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>(() => {
@@ -36,6 +37,28 @@ export default function App() {
     return new Set();
   });
 
+  const [totalTurnsCompleted, setTotalTurnsCompleted] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bespoken-total-turns');
+      return saved ? parseInt(saved) : 0;
+    }
+    return 0;
+  });
+
+  const [weeklyActivity, setWeeklyActivity] = useState<Array<{day: string, turns: number}>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bespoken-weekly-activity');
+      return saved ? JSON.parse(saved) : [
+        {day: 'Mon', turns: 0}, {day: 'Tue', turns: 0}, {day: 'Wed', turns: 0},
+        {day: 'Thu', turns: 0}, {day: 'Fri', turns: 0}, {day: 'Sat', turns: 0}, {day: 'Sun', turns: 0}
+      ];
+    }
+    return [
+      {day: 'Mon', turns: 0}, {day: 'Tue', turns: 0}, {day: 'Wed', turns: 0},
+      {day: 'Thu', turns: 0}, {day: 'Fri', turns: 0}, {day: 'Sat', turns: 0}, {day: 'Sun', turns: 0}
+    ];
+  });
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bespoken-completed-scenarios', JSON.stringify(Array.from(completedScenarios)));
@@ -54,6 +77,20 @@ export default function App() {
       }
     }
   }, [user]);
+
+  // Persist totalTurnsCompleted to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bespoken-total-turns', totalTurnsCompleted.toString());
+    }
+  }, [totalTurnsCompleted]);
+
+  // Persist weeklyActivity to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bespoken-weekly-activity', JSON.stringify(weeklyActivity));
+    }
+  }, [weeklyActivity]);
 
   // Initialize Google Identity Services once when component mounts
   useEffect(() => {
@@ -123,6 +160,18 @@ export default function App() {
   };
 
   const handleComplete = () => {
+    // Add 8 to total turns completed
+    setTotalTurnsCompleted(prev => prev + 8);
+    
+    // Update today's weekly activity
+    const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const dayMap = [6, 0, 1, 2, 3, 4, 5]; // Map Sunday=0 to index 6, Monday=1 to index 0, etc.
+    const dayIndex = dayMap[today];
+    
+    setWeeklyActivity(prev => prev.map((day, index) => 
+      index === dayIndex ? { ...day, turns: day.turns + 8 } : day
+    ));
+    
     setCompletedScenarios(prev => new Set([...prev, scenarioId]));
     setCurrentScreen('celebration');
   };
@@ -139,6 +188,15 @@ export default function App() {
 
   const handleFeedbackReceived = (turnData: any) => {
     setFeedbackHistory(prev => [...prev, turnData]);
+  };
+
+  const handleNavigateToAccount = () => { 
+    setCurrentScreen('account'); 
+  };
+
+  const handleLogout = () => { 
+    setUser(null); 
+    setCurrentScreen('signIn'); 
   };
 
 
@@ -202,6 +260,7 @@ export default function App() {
         onBackToScenarios={handleBackToScenarios}
         onTryAgain={handleTryAgain}
         feedbackHistory={feedbackHistory}
+        onNavigateToAccount={handleNavigateToAccount}
       />
     );
   }
@@ -216,6 +275,22 @@ export default function App() {
         feedbackHistory={feedbackHistory}
         onFeedbackReceived={handleFeedbackReceived}
         onBackToLibrary={handleBackToScenarios}
+        onNavigateToAccount={handleNavigateToAccount}
+      />
+    );
+  }
+
+  if (currentScreen === 'account') {
+    return (
+      <AccountPage 
+        userName={user?.name || 'Guest User'}
+        userEmail={user?.email || 'guest@bespoken.app'}
+        isGuest={!user}
+        completedScenariosCount={completedScenarios.size}
+        totalTurnsCompleted={totalTurnsCompleted}
+        weeklyActivityData={weeklyActivity}
+        onLogout={handleLogout}
+        onBack={handleBackToScenarios}
       />
     );
   }
@@ -224,6 +299,7 @@ export default function App() {
     <ScenarioLibrary 
       onSelectScenario={handleSelectScenario}
       completedScenarios={completedScenarios}
+      onNavigateToAccount={handleNavigateToAccount}
     />
   );
 }

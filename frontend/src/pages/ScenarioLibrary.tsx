@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { CheckCircle } from 'lucide-react';
+import HamburgerMenu from './HamburgerMenu';
 
 interface Scenario {
   id: string;
@@ -13,9 +14,10 @@ interface Scenario {
 interface ScenarioLibraryProps {
   onSelectScenario?: (scenarioId: string) => void;
   completedScenarios?: Set<string>;
+  onNavigateToAccount?: () => void;
 }
 
-export default function ScenarioLibrary({ onSelectScenario, completedScenarios = new Set() }: ScenarioLibraryProps) {
+export default function ScenarioLibrary({ onSelectScenario, completedScenarios = new Set(), onNavigateToAccount }: ScenarioLibraryProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,7 +72,8 @@ export default function ScenarioLibrary({ onSelectScenario, completedScenarios =
   };
 
   return (
-    <div className="w-[390px] h-[844px] bg-white mx-auto flex flex-col">
+    <div className="w-[390px] h-[844px] bg-white mx-auto flex flex-col relative">
+      {onNavigateToAccount && <HamburgerMenu onNavigateToAccount={onNavigateToAccount} />}
       {/* Header Section */}
       <div className="pt-12 pb-6 px-5">
         <div className="flex justify-center mb-3">

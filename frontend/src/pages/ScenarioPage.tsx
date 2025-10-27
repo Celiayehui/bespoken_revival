@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic } from 'lucide-react';
+import HamburgerMenu from './HamburgerMenu';
 
 type RecordingStatus = 'idle' | 'starting' | 'recording' | 'recorded' | 'feedback';
 
@@ -11,9 +12,10 @@ interface ScenarioPageProps {
   feedbackHistory: any[];
   onFeedbackReceived: (turnData: any) => void;
   onBackToLibrary?: () => void;
+  onNavigateToAccount?: () => void;
 }
 
-export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTurnChange, feedbackHistory, onFeedbackReceived, onBackToLibrary }: ScenarioPageProps) {
+export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTurnChange, feedbackHistory, onFeedbackReceived, onBackToLibrary, onNavigateToAccount }: ScenarioPageProps) {
   const [turnData, setTurnData] = useState<any>(null);
   const [isScenarioComplete, setIsScenarioComplete] = useState(false);
   
@@ -325,7 +327,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
           }
         `}
       </style>
-      <div className="w-[390px] h-[844px] bg-white mx-auto flex flex-col">
+      <div className="w-[390px] h-[844px] bg-white mx-auto flex flex-col relative">
+      {onNavigateToAccount && <HamburgerMenu onNavigateToAccount={onNavigateToAccount} />}
       {/* Company Logo */}
       <div className="flex justify-center pt-12 pb-8">
         <div 

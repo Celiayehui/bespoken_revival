@@ -2,19 +2,22 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Card } from '../components/ui/card';
 import { CheckCircle, Trophy, Star } from 'lucide-react';
+import HamburgerMenu from './HamburgerMenu';
 
 interface CelebrationPageProps {
   scenarioName: string;
   onBackToScenarios: () => void;
   onTryAgain: () => void;
   feedbackHistory: any[];
+  onNavigateToAccount?: () => void;
 }
 
 export default function CelebrationPage({ 
   scenarioName, 
   onBackToScenarios, 
   onTryAgain,
-  feedbackHistory 
+  feedbackHistory,
+  onNavigateToAccount 
 }: CelebrationPageProps) {
   // Confetti particles
   const confettiColors = ['#3b82f6', '#10b981', '#fbbf24', '#f59e0b', '#ef4444'];
@@ -28,6 +31,7 @@ export default function CelebrationPage({
 
   return (
     <div className="w-[390px] h-[844px] bg-white mx-auto flex flex-col overflow-hidden relative">
+      {onNavigateToAccount && <HamburgerMenu onNavigateToAccount={onNavigateToAccount} />}
       {/* Confetti Animation */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {confettiPieces.map((piece) => (
