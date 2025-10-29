@@ -23,6 +23,56 @@ SCENARIOS = {
         ]
     },
 
+    "baseball_game": {
+        "title": "Baseball Game - Day Out at Wrigley Field",
+        "description": "Practice chatting naturally while watching a baseball game — from learning the rules to celebrating a win with friends.",
+        "difficulty": "Intermediate",
+        "image_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/preview_image/baseball.png",
+        "turns": [
+            {
+                "turn_index": 1,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv0.mp4",
+                "transcript": "Hey there! I’m so glad you agreed to go to this baseball game with me!"
+            },
+            {
+                "turn_index": 2,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv1.mp4",
+                "transcript": "Wow, these seats are great! Look at this view! And it’s such a beautiful day! The baseball season is from April through September which is spring and summer throughout the United States, so the weather is almost always warm. Have you ever been to a baseball game before?"
+            },
+            {
+                "turn_index": 3,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv2.mp4",
+                "transcript": "Got it. So can you tell me what you already know about the rules of baseball?"
+            },
+            {
+                "turn_index": 4,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv2.5.mp4",
+                "transcript": "Wow, that’s great! You already know so much! All that talking has got me feeling hungry. Let’s grab some food before the game starts."
+            },
+            {
+                "turn_index": 5,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv3.mp4",
+                "transcript": "Hi, welcome to the Wrigley Field concession stand, what can I get you?"
+            },
+            {
+                "turn_index": 6,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv4.mp4",
+                "transcript": "Oh, I missed it. What just happened? (The correct answer should be along the lines of: That ball was crushed! I thought he hit it out of the ballpark! The center fielder made such a great play to catch that!)"
+            },
+            {
+                "turn_index": 7,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv5.mp4",
+                "transcript": "Oh no, I was in the bathroom. What did I miss? (The correct answer should be along the lines of: Wow, he crushed that ball! He’s such a good home run hitter! And a great catcher on defense too!)"
+            },
+            {
+                "turn_index": 8,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/baseball/baseballv6.mp4",
+                "transcript": "Wow! That was a crazy game. I’m so glad the Cubs won! Now let’s head out to the Wrigleyville bars and celebrate!"
+            }
+        ]
+    },
+
+
     "meeting": {
         "title": "Leading a Meeting - Choosing a Brand Mascot",
         "description": "You're leading a team meeting to decide on a brand mascot for BeSpoken. Practice facilitating discussion, managing different opinions, and keeping the meeting on track.",
@@ -96,18 +146,6 @@ SCENARIOS = {
             {"turn_index": 1, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/grocery_store_1.mp4", "transcript": "Did you find everything ok today?"},
             # {"turn_index": 2, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Can you tell me what time breakfast is served and if Wi-Fi is included?"},
             # {"turn_index": 3, "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/meeting/meeting_6.mp4", "transcript": "Thank you! Could I also get an extra key card, please?"}
-        ]
-    },
-
-    "airport_navigation": {
-        "title": "Navigate the Airport",
-        "description": "Practice handling security, customs, and finding your gate in an international airport setting.",
-        "difficulty": "Advanced",
-        "image_url": "https://images.unsplash.com/photo-1706544132533-c2828a971fd0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhaXJwb3J0JTIwdGVybWluYWwlMjB0cmF2ZWx8ZW58MXx8fHwxNzYwMzcwODMyfDA&ixlib=rb-4.1.0&q=80&w=1080",
-        "turns": [
-            {"turn_index": 1, "video_url": "", "transcript": "Excuse me, where’s the security checkpoint for Gate C?"},
-            {"turn_index": 2, "video_url": "", "transcript": "How long is the line today? My flight boards in 30 minutes."},
-            {"turn_index": 3, "video_url": "", "transcript": "Thanks! Also, where can I find a place to grab a quick coffee near Gate C12?"}
         ]
     }
 }
