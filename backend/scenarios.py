@@ -1,4 +1,50 @@
 SCENARIOS = {
+
+    "campus_encounter": {
+        "title": "Campus Encounter - Small Talks",
+        "description": "Practice greeting friends and classmates casually around campus while building confidence in everyday small talk.",
+        "difficulty": "Intermediate",
+        "image_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/preview_image/campus_encounter.png",
+        "turns": [
+            {
+                "turn_index": 1,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v1.mp4",
+                "transcript": "Maddie: “Hey, what’s up? How’s it going? It’s so nice out today. What have you been up to on this beautiful Spring day?”"
+            },
+            {
+                "turn_index": 2,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v2.mp4",
+                "transcript": "Oh look, here comes Eddie. Remember, he was in our group for that marketing project a couple of weeks ago. Anyways, let’s say hi to him! To start, you can say “Hi” in a casual way – some common options are “hey, Eddie!”, “what’s up?”, or “how’s it going?” After that, let’s ask them how their quarter is going."
+            },
+            {
+                "turn_index": 3,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v3.mp4",
+                "transcript": "Maddie: “Now it’s your turn to respond – “what’s good with you” is another way to ask “how are you”. Why don’t you tell Eddie what you’ve been up to the last few weeks?”"
+            },
+            {
+                "turn_index": 4,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v4vf.mp4",
+                "transcript": "Maddie: “So we’re about to walk by Mika. You’re friendly with her, but you don’t know her that well. It might be awkward if we stop to talk, so in this case just give them a wave and one of those casual greetings like “Hi there,” “what’s up?”, or “what’s going on?”. You can quickly compliment part of her outfit if you want too.” Mika: “Hi there! Oh my god, I love your shoes!” *keeps walking*"
+            },
+            {
+                "turn_index": 5,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v4.5.mp4",
+                "transcript": "Maddie: “Nice job, that was super chill. Glad we didn’t get stuck in an awkward conversation. We’re almost to the coffeeshop, but I also see Natalie and Veronica over there. We’re going to their party this weekend. First, you should say hi with one of your new greetings and then you can tell them how excited you are for the party!”"
+            },
+            {
+                "turn_index": 6,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v5.mp4",
+                "transcript": "Ooh a themed party – that should be fun. Now you should thank them once again for the party invite and ask if you can bring anything to the party."
+            },
+            {
+                "turn_index": 7,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v6.mp4",
+                "transcript": "Awesome job making your way through all those conversations on your way here. Let’s head in!"
+            }
+        ]
+    },
+
+
     "happy_hour": {
         "title": "Happy Hour - First Networking Event",
         "description": "Practice introducing yourself and making small talk at a work happy hour with new colleagues.",
