@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from pymongo import MongoClient
-from scenarios import get_turn_context, get_video_url, get_all_scenarios, get_scenario_data, get_turn_question
+from scenarios import get_turn_context, get_video_url, get_example_video_url, get_all_scenarios, get_scenario_data, get_turn_question
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -21,7 +21,11 @@ from google.auth.transport import requests as google_requests
 # pip install openai>=1.40.0
 try:
     from openai import OpenAI
-except Exception:  # pragma: no cover
+    print("✅ OpenAI SDK imported successfully")
+except Exception as e:  # pragma: no cover
+    print(f"❌ OpenAI SDK import failed: {e}")
+    import traceback
+    traceback.print_exc()
     OpenAI = None
 
 # ----------------------------
@@ -103,7 +107,17 @@ s3_client = boto3.client(
 
 openai_client = None
 if OPENAI_API_KEY and OpenAI is not None:
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    try:
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        print("✅ OpenAI client initialized successfully")
+    except Exception as e:
+        print(f"❌ Failed to initialize OpenAI client: {e}")
+        import traceback
+        traceback.print_exc()
+elif not OPENAI_API_KEY:
+    print("⚠️ OPENAI_API_KEY not set in environment variables")
+elif OpenAI is None:
+    print("⚠️ OpenAI SDK not available (import failed)")
 
 # ----------------------------
 # Helpers
@@ -257,17 +271,24 @@ def get_turn():
     
     turn_context = get_turn_context(scenario_id, turn_index)
     video_url = get_video_url(scenario_id, turn_index)
+    example_video_url = get_example_video_url(scenario_id, turn_index)
     
     if not turn_context or not video_url:
         return jsonify({"error": "Scenario or turn not found"}), 404
     
-    return jsonify({
+    result = {
         "scenario_name": turn_context["scenario_title"],
         "scenario_description": turn_context["scenario_description"],
         "turn_index": turn_index,
         "video_url": video_url,
         "turn_transcript": turn_context["turn_transcript"]
-    })
+    }
+    
+    # Only include example_video_url if it exists
+    if example_video_url:
+        result["example_video_url"] = example_video_url
+    
+    return jsonify(result)
 
 
 @app.post("/upload")
@@ -357,11 +378,17 @@ def handle_upload():
         try:
             audio_url, t_s3_ms = future_upload.result()
         except Exception as e:
+            import traceback
+            print(f"❌ ERROR in S3 upload task: {e}")
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 502
         try:
             transcript, t_stt_ms = future_transcribe.result()
             print(f"📝 WHISPER TRANSCRIBED: '{transcript}'")
         except Exception as e:
+            import traceback
+            print(f"❌ ERROR in Whisper transcription task: {e}")
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 502
         try:
             turn_context = future_context.result()
@@ -382,6 +409,9 @@ def handle_upload():
         t_llm_ms = int((time.perf_counter() - _t) * 1000)
         print(f"💬 GPT RESPONSE: {feedback}")
     except RuntimeError as e:
+        import traceback
+        print(f"❌ ERROR in GPT feedback generation: {e}")
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 502
 
     # Save to MongoDB (non-blocking background task)

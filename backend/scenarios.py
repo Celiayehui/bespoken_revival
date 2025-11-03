@@ -9,11 +9,13 @@ SCENARIOS = {
             {
                 "turn_index": 1,
                 "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v1.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v1answer.mp4",
                 "transcript": "Maddie: “Hey, what’s up? How’s it going? It’s so nice out today. What have you been up to on this beautiful Spring day?”"
             },
             {
                 "turn_index": 2,
                 "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v2.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v2answer.mp4",
                 "transcript": "Oh look, here comes Eddie. Remember, he was in our group for that marketing project a couple of weeks ago. Anyways, let’s say hi to him! To start, you can say “Hi” in a casual way – some common options are “hey, Eddie!”, “what’s up?”, or “how’s it going?” After that, let’s ask them how their quarter is going."
             },
             {
@@ -29,6 +31,7 @@ SCENARIOS = {
             {
                 "turn_index": 5,
                 "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/campus_encounter_v4.5.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/Campus_encounter/example_turn5.mp4",
                 "transcript": "Maddie: “Nice job, that was super chill. Glad we didn’t get stuck in an awkward conversation. We’re almost to the coffeeshop, but I also see Natalie and Veronica over there. We’re going to their party this weekend. First, you should say hi with one of your new greetings and then you can tell them how excited you are for the party!”"
             },
             {
@@ -54,6 +57,7 @@ SCENARIOS = {
             {
                 "turn_index": 1,
                 "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_3.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour/example_turn1.mp4",
                 "transcript": "Hey, nice to meet you! Where are you from? Tell me a little about yourself?"
             },
             {
@@ -64,6 +68,7 @@ SCENARIOS = {
             {
                 "turn_index": 3,
                 "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour_10.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/happy_hour/example_turn3.mp4",
                 "transcript": "That's so cool! Hey, I've had a few of these drinks, so I gotta run to the bathroom, but it was great to meet you!"
             }
         ]
@@ -231,6 +236,20 @@ def get_video_url(scenario_id: str, turn_index: int) -> str:
     for turn in scenario["turns"]:
         if turn["turn_index"] == turn_index:
             return turn["video_url"]
+    
+    return None
+
+def get_example_video_url(scenario_id: str, turn_index: int) -> str | None:
+    """Returns the example video URL for a given scenario and turn, or None if not found."""
+    if scenario_id not in SCENARIOS:
+        return None
+    
+    scenario = SCENARIOS[scenario_id]
+    
+    # Find the turn with matching turn_index
+    for turn in scenario["turns"]:
+        if turn["turn_index"] == turn_index:
+            return turn.get("example_video_url")  # Returns None if key doesn't exist
     
     return None
 
