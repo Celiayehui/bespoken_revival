@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic } from 'lucide-react';
+import { Mic, Play } from 'lucide-react';
 import HamburgerMenu from './HamburgerMenu';
 
 type RecordingStatus = 'idle' | 'starting' | 'recording' | 'recorded' | 'feedback';
@@ -24,6 +24,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
   const [feedback, setFeedback] = useState<string>('');
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showExampleVideo, setShowExampleVideo] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -49,7 +50,32 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
 
   useEffect(() => {
     fetchTurnData();
+    // Reset feedback-related state when turn changes
+    setFeedbackData(null);
+    setShowExampleVideo(false);
+    setStatus('idle');
   }, [currentTurn]);
+
+  // Debug: Log when turnData changes
+  useEffect(() => {
+    if (turnData) {
+      console.log('📊 turnData updated:', {
+        turn_index: turnData.turn_index,
+        has_example_video_url: !!turnData.example_video_url,
+        example_video_url: turnData.example_video_url
+      });
+    }
+  }, [turnData]);
+
+  // Debug: Log when feedbackData changes
+  useEffect(() => {
+    if (feedbackData) {
+      console.log('💬 feedbackData updated:', {
+        has_example_video_url: !!feedbackData.example_video_url,
+        example_video_url: feedbackData.example_video_url
+      });
+    }
+  }, [feedbackData]);
 
   useEffect(() => {
     console.log('🔵 Status changed to:', status);
@@ -181,7 +207,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       setFeedbackData({
         transcript: data.transcript,
         feedback: data.feedback,
-        turn_transcript: turnData?.turn_transcript || ''
+        turn_transcript: turnData?.turn_transcript || '',
+        example_video_url: turnData?.example_video_url || null  // Preserve example_video_url from current turn
       });
       setStatus('feedback');
       
@@ -212,7 +239,20 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       checkNextTurn();
     } catch (error) {
       console.error('Error submitting recording:', error);
-      setFeedback('Sorry, there was an error processing your recording. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setFeedback(`Sorry, there was an error processing your recording: ${errorMessage}. Please try again.`);
+      // Set feedbackData with error info so the feedback section renders
+      setFeedbackData({
+        transcript: 'Error: Could not process recording',
+        feedback: {
+          tip: errorMessage.includes('502') 
+            ? 'The server is not responding. Please make sure the backend server is running and try again.'
+            : 'There was an error processing your recording. Please try again.',
+          rewrite: 'none'
+        },
+        turn_transcript: turnData?.turn_transcript || '',
+        example_video_url: turnData?.example_video_url || null  // Preserve example_video_url even on error
+      });
       setStatus('feedback');
     } finally {
       setIsLoading(false);
@@ -228,6 +268,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       setAudioBlob(null);
       setFeedback('');
       setFeedbackData(null);
+      setShowExampleVideo(false);  // Reset example video when moving to next turn
     }
   };
 
@@ -425,7 +466,108 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
           )}
         </div>
       </div>
+
+      {/* Native Speaker Example Video Section - Only show after feedback */}
+      {(() => {
+        const hasExampleVideo = feedbackData && (feedbackData.example_video_url || turnData?.example_video_url);
+        console.log('🎯 Purple button section check:', {
+          hasFeedbackData: !!feedbackData,
+          feedbackDataExampleUrl: feedbackData?.example_video_url,
+          turnDataExampleUrl: turnData?.example_video_url,
+          shouldShow: !!hasExampleVideo
+        });
+        return hasExampleVideo ? (
+          <div className="px-5 mb-8">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">
+              💡 Native Speaker Example (Optional)
+            </h3>
+                         <div 
+               className="w-full rounded-lg flex items-center justify-center relative"
+               style={{
+                 background: 'linear-gradient(to bottom right, #581c87, #7e22ce)',
+                 minHeight: '200px',
+                 height: '200px',
+                 width: '100%',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center'
+               }}
+             >
+               <button 
+                 onClick={() => {
+                   console.log('🎬 Opening example video modal');
+                   console.log('📹 Video URL:', feedbackData.example_video_url || turnData?.example_video_url);
+                   setShowExampleVideo(true);
+                 }}
+                 className="rounded-full flex items-center justify-center transition-all z-10"
+                 style={{
+                   width: '64px',
+                   height: '64px',
+                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                   border: 'none',
+                   cursor: 'pointer',
+                   display: 'flex',
+                   alignItems: 'center',
+                   justifyContent: 'center'
+                 }}
+                 onMouseEnter={(e) => {
+                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                 }}
+                 onMouseLeave={(e) => {
+                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                 }}
+               >
+                 <Play className="w-6 h-6 text-white ml-1" fill="white" stroke="white" strokeWidth={2} style={{ display: 'block' }} />
+               </button>
+             </div>
+            <p className="text-xs text-gray-600 mt-2 text-center">
+              Watch how a native speaker would respond to this scenario
+            </p>
+          </div>
+        ) : null;
+      })()}
+      {/* Debug: Show if section should be visible */}
+      {feedbackData && !(feedbackData.example_video_url || turnData?.example_video_url) && (
+        <div className="px-5 mb-8 text-xs text-gray-400 border border-red-300 p-2 bg-red-50">
+          Debug: feedbackData exists but no example_video_url. feedbackData.example_video_url: {String(feedbackData.example_video_url)}, turnData?.example_video_url: {String(turnData?.example_video_url)}
+        </div>
+      )}
       </div>
+
+      {/* Example Video Player Modal */}
+      {showExampleVideo && (feedbackData?.example_video_url || turnData?.example_video_url) && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center">
+          <div className="relative w-[390px] px-5">
+            <button 
+              onClick={() => {
+                console.log('❌ Closing example video modal');
+                setShowExampleVideo(false);
+              }}
+              className="absolute -top-12 right-5 text-white text-3xl font-bold hover:text-gray-300 transition-colors"
+            >
+              ✕
+            </button>
+            <video 
+              src={feedbackData?.example_video_url || turnData?.example_video_url} 
+              controls 
+              autoPlay
+              playsInline
+              className="w-full rounded-lg"
+              onEnded={() => {
+                console.log('🎬 Video ended, closing modal');
+                setShowExampleVideo(false);
+              }}
+              onError={(e) => {
+                console.error('❌ Video error:', e);
+                console.error('📹 Failed to load video URL:', feedbackData?.example_video_url || turnData?.example_video_url);
+              }}
+            />
+            <p className="text-white text-center text-sm mt-3">
+              Native Speaker Example
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
