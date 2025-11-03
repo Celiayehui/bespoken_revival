@@ -56,26 +56,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     setStatus('idle');
   }, [currentTurn]);
 
-  // Debug: Log when turnData changes
-  useEffect(() => {
-    if (turnData) {
-      console.log('📊 turnData updated:', {
-        turn_index: turnData.turn_index,
-        has_example_video_url: !!turnData.example_video_url,
-        example_video_url: turnData.example_video_url
-      });
-    }
-  }, [turnData]);
 
-  // Debug: Log when feedbackData changes
-  useEffect(() => {
-    if (feedbackData) {
-      console.log('💬 feedbackData updated:', {
-        has_example_video_url: !!feedbackData.example_video_url,
-        example_video_url: feedbackData.example_video_url
-      });
-    }
-  }, [feedbackData]);
 
   useEffect(() => {
     console.log('🔵 Status changed to:', status);
@@ -470,12 +451,6 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       {/* Native Speaker Example Video Section - Only show after feedback */}
       {(() => {
         const hasExampleVideo = feedbackData && (feedbackData.example_video_url || turnData?.example_video_url);
-        console.log('🎯 Purple button section check:', {
-          hasFeedbackData: !!feedbackData,
-          feedbackDataExampleUrl: feedbackData?.example_video_url,
-          turnDataExampleUrl: turnData?.example_video_url,
-          shouldShow: !!hasExampleVideo
-        });
         return hasExampleVideo ? (
           <div className="px-5 mb-8">
             <h3 className="text-sm font-bold text-gray-900 mb-3">
@@ -494,11 +469,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
                }}
              >
                <button 
-                 onClick={() => {
-                   console.log('🎬 Opening example video modal');
-                   console.log('📹 Video URL:', feedbackData.example_video_url || turnData?.example_video_url);
-                   setShowExampleVideo(true);
-                 }}
+                 onClick={() => setShowExampleVideo(true)}
                  className="rounded-full flex items-center justify-center transition-all z-10"
                  style={{
                    width: '64px',
@@ -519,19 +490,13 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
                >
                  <Play className="w-6 h-6 text-white ml-1" fill="white" stroke="white" strokeWidth={2} style={{ display: 'block' }} />
                </button>
-             </div>
-            <p className="text-xs text-gray-600 mt-2 text-center">
-              Watch how a native speaker would respond to this scenario
-            </p>
-          </div>
-        ) : null;
-      })()}
-      {/* Debug: Show if section should be visible */}
-      {feedbackData && !(feedbackData.example_video_url || turnData?.example_video_url) && (
-        <div className="px-5 mb-8 text-xs text-gray-400 border border-red-300 p-2 bg-red-50">
-          Debug: feedbackData exists but no example_video_url. feedbackData.example_video_url: {String(feedbackData.example_video_url)}, turnData?.example_video_url: {String(turnData?.example_video_url)}
-        </div>
-      )}
+                          </div>
+             <p className="text-xs text-gray-600 mt-2 text-center">
+               Watch how a native speaker would respond to this scenario
+             </p>
+           </div>
+         ) : null;
+       })()}
       </div>
 
       {/* Example Video Player Modal */}
@@ -539,10 +504,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
         <div className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center">
           <div className="relative w-[390px] px-5">
             <button 
-              onClick={() => {
-                console.log('❌ Closing example video modal');
-                setShowExampleVideo(false);
-              }}
+                             onClick={() => setShowExampleVideo(false)}
               className="absolute -top-12 right-5 text-white text-3xl font-bold hover:text-gray-300 transition-colors"
             >
               ✕
@@ -553,14 +515,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
               autoPlay
               playsInline
               className="w-full rounded-lg"
-              onEnded={() => {
-                console.log('🎬 Video ended, closing modal');
-                setShowExampleVideo(false);
-              }}
-              onError={(e) => {
-                console.error('❌ Video error:', e);
-                console.error('📹 Failed to load video URL:', feedbackData?.example_video_url || turnData?.example_video_url);
-              }}
+                             onEnded={() => setShowExampleVideo(false)}
+               onError={() => setShowExampleVideo(false)}
             />
             <p className="text-white text-center text-sm mt-3">
               Native Speaker Example
