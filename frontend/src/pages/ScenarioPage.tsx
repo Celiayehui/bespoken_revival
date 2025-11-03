@@ -1,5 +1,57 @@
+/**
+ * --- FIGMA REFERENCE STYLE ---
+ * Below is the simplified Figma-generated UI code for reference.
+ * Use it only for styling and layout cues (colors, spacing, text, button states).
+ * DO NOT copy or change logic — keep all functions and hooks intact.
+ * The goal is to match the visual design from the Figma prototype while keeping all logic, hooks, and backend calls intact.
+ *
+ * Figma → Current Code Mapping:
+ * - Figma 'idle'          → current 'idle'
+ * - Figma 'preparing'     → current 'starting'
+ * - Figma 'recording'     → current 'recording'
+ * - Figma 'readyToSubmit' → current 'recorded'
+ * - Figma 'processing' + 'completed' → current 'feedback'
+ *
+ * So the complete flow in our code is:
+ * idle → starting → recording → recorded → feedback
+ *
+ * --- FEEDBACK STATE BEHAVIOR ---
+ * In our implementation, Figma’s "processing" and "completed" states are merged into one called 'feedback'.
+ * - When feedback is still being generated (`isLoading === true` and no `feedbackData` yet), show a "Processing..." spinner.
+ * - Once feedback is available (`isLoading === false` and `feedbackData` exists), show the feedback results and display the "Next" button.
+ *
+ * This logic is already implemented in the existing Feedback Section using `isLoading` and `feedbackData`.
+ * Do NOT add new states for processing or completed — just restyle the existing UI to match Figma's visuals.
+ *
+ * --- TASK INSTRUCTIONS FOR CURSOR ---
+ * 1. Keep all existing logic exactly as-is, including:
+ *    - MediaRecorder behavior (start, stop, submit)
+ *    - Feedback and turn handling
+ *    - State transitions and API calls
+ */
+
+/*
+// Recording button states (from Figma reference):
+switch (recordingState) {
+  case 'idle':
+    <button className="w-[70px] h-[70px] bg-red-500 rounded-full ..."><Mic /></button>
+  case 'preparing':
+    <button disabled className="w-[70px] h-[70px] bg-orange-500 ..."><Loader2 /></button>
+  case 'recording':
+    <button className="w-[70px] h-[70px] bg-red-600 animate-pulse ...">🔴 Recording...</button>
+  case 'readyToSubmit':
+    <button className="w-full h-12 bg-blue-500 text-white rounded-lg ...">Submit</button>
+    <button className="text-sm text-blue-600 mt-3 hover:underline">Record again</button>
+  case 'processing':
+    <button disabled className="w-full h-12 bg-blue-400 text-white ...">Processing...</button>
+  case 'completed':
+    <button className="w-full h-12 bg-blue-500 text-white ...">Next</button>
+}
+*/
+
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Play } from 'lucide-react';
+import { Mic, Play, Loader2, Circle } from 'lucide-react';
 import HamburgerMenu from './HamburgerMenu';
 
 type RecordingStatus = 'idle' | 'starting' | 'recording' | 'recorded' | 'feedback';
@@ -58,9 +110,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
 
 
 
-  useEffect(() => {
-    console.log('🔵 Status changed to:', status);
-  }, [status]);
+
 
   // Handle video playback when turn data changes
   useEffect(() => {
@@ -275,56 +325,53 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     }
   };
 
+  // Helper function to get button content based on status
   const getRecordButtonContent = () => {
-    console.log('🎨 getRecordButtonContent called with status:', status);
     switch (status) {
       case 'idle':
         return <Mic className="w-8 h-8 text-white" />;
       case 'starting':
-        console.log('🎨 Rendering starting button content');
-        return (
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-xs text-white font-medium mt-1">FIRING UP</span>
-          </div>
-        );
+        return <Loader2 className="w-8 h-8 text-white animate-spin" />;
       case 'recording':
-        console.log('🎨 Rendering recording button content');
-        return (
-          <div className="flex flex-col items-center justify-center">
-            <Mic className="w-8 h-8 text-white animate-pulse" style={{ animation: 'voiceMemoPulse 1.5s ease-in-out infinite' }} />
-            <span className="text-xs text-white font-medium mt-1">STOP</span>
-          </div>
-        );
+        return <Circle className="w-6 h-6 text-white" fill="white" />;
       case 'recorded':
-        return <span className="text-sm text-white font-medium">SUBMIT</span>;
+        return <span className="text-base font-medium text-white">Submit</span>;
       case 'feedback':
-        return <span className="text-sm text-white font-medium">NEXT</span>;
+        return <span className="text-base font-medium text-white">Next</span>;
       default:
-        console.warn('⚠️ Unknown status:', status);
         return <Mic className="w-8 h-8 text-white" />;
     }
   };
 
-  const getRecordButtonStyle = () => {
-    const baseClasses = "w-[70px] h-[70px] flex items-center justify-center transition-all shadow-lg";
-    
-    console.log('🎨 getRecordButtonStyle called with status:', status);
+  // Helper to ensure button always has visible content
+  const getButtonDisplayContent = () => {
+    if (isLoading && (status === 'recorded' || status === 'feedback')) {
+      return 'Processing...';
+    }
+    return getRecordButtonContent();
+  };
+
+  // Helper function to get helper text below button
+  const getHelperText = () => {
     switch (status) {
-      case 'idle':
-        return `${baseClasses} rounded-full bg-red-500 hover:bg-red-600`;
       case 'starting':
-        console.log('🎨 Applying starting button styles');
-        return `${baseClasses} rounded-2xl bg-orange-500`;
+        return <p className="text-sm text-orange-600 mt-3 text-center">Preparing...</p>;
       case 'recording':
-        console.log('🎨 Applying recording button styles');
-        return `${baseClasses} rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800`;
+        return <p className="text-sm text-red-600 mt-3 text-center">🔴 Recording...</p>;
       case 'recorded':
-      case 'feedback':
-        return `${baseClasses} rounded-full bg-blue-500 hover:bg-blue-600`;
+        return (
+          <button
+            onClick={() => {
+              setStatus('idle');
+              setAudioBlob(null);
+            }}
+            className="text-sm text-blue-600 mt-3 hover:underline transition-colors"
+          >
+            Record again
+          </button>
+        );
       default:
-        console.warn('⚠️ Unknown status for button style:', status);
-        return `${baseClasses} rounded-full bg-gray-500`;
+        return null;
     }
   };
 
@@ -384,127 +431,106 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       </div>
 
       {/* Record Button */}
-      <div className="flex justify-center mb-8">
-        <button 
-          className={getRecordButtonStyle()}
-          onClick={handleRecordClick}
-          disabled={isLoading}
-          style={{
-            backgroundColor: status === 'recording' ? '#dc2626' : status === 'starting' ? '#f97316' : status === 'idle' ? '#ef4444' : status === 'recorded' || status === 'feedback' ? '#3b82f6' : '#6b7280',
-            borderRadius: status === 'recording' || status === 'starting' ? '0.5rem' : '9999px',
-            width: '70px',
-            height: '70px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            cursor: status === 'starting' ? 'wait' : 'pointer'
-          }}
-        >
-          {getRecordButtonContent()}
-        </button>
+      <div className="px-5 mb-8">
+        {(status === 'recorded' || status === 'feedback') ? (
+          // Full-width button for recorded and feedback states
+          <div className="flex flex-col items-center">
+            <button
+              onClick={handleRecordClick}
+              disabled={isLoading}
+              className={`w-full h-12 rounded-lg font-medium text-white transition-all shadow-lg flex items-center justify-center min-h-[48px] ${
+                isLoading
+                  ? 'bg-blue-400 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700'
+              }`}
+            >
+              {getButtonDisplayContent() || <span className="text-base font-medium text-white">Next</span>}
+            </button>
+            {status === 'recorded' && getHelperText()}
+          </div>
+        ) : (
+          // Circular/square button for idle, starting, and recording states
+          <div className="flex flex-col items-center">
+            <button
+              onClick={handleRecordClick}
+              disabled={isLoading || status === 'starting'}
+              className={`w-[70px] h-[70px] flex items-center justify-center transition-all shadow-lg ${
+                status === 'idle'
+                  ? 'rounded-full bg-red-500 hover:bg-red-600 active:bg-red-700'
+                  : status === 'starting'
+                  ? 'rounded-full bg-orange-500 cursor-wait animate-pulse'
+                  : status === 'recording'
+                  ? 'rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 animate-pulse'
+                  : 'rounded-full bg-gray-500'
+              }`}
+            >
+              {getRecordButtonContent() || <Mic className="w-8 h-8 text-white" />}
+            </button>
+            {getHelperText()}
+          </div>
+        )}
       </div>
 
       {/* Feedback Section */}
-      <div className="px-5 mb-8">
-        <div className="w-full min-h-[250px] bg-white rounded-xl border border-gray-200 p-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-[200px]">
-              <div className="text-center">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                <p className="text-gray-600">Processing your recording...</p>
-              </div>
-            </div>
-          ) : feedbackData ? (
+      {feedbackData && (
+        <div className="px-5 mb-8">
+          <div className="w-full bg-white rounded-lg border border-gray-200 p-5">
             <div className="space-y-4">
               <div>
-                <span className="text-sm font-semibold text-gray-700">You said:</span>
-                <p className="text-gray-900 mt-1 p-3 bg-gray-50 rounded-lg border-l-4 border-gray-300">
+                <span className="text-sm font-semibold text-gray-900">You said:</span>
+                <p className="text-gray-900 mt-2 p-3 bg-gray-50 rounded-md border-l-4 border-gray-300">
                   "{feedbackData.transcript}"
                 </p>
               </div>
               {feedbackData.feedback.rewrite && feedbackData.feedback.rewrite !== 'none' && (
                 <div>
-                  <span className="text-sm font-semibold text-gray-700">Try instead:</span>
-                  <p className="text-gray-900 mt-1 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                  <span className="text-sm font-semibold text-gray-900">Try instead:</span>
+                  <p className="text-gray-900 mt-2 p-3 bg-green-50 rounded-md border-l-4 border-green-400">
                     "{feedbackData.feedback.rewrite}"
                   </p>
                 </div>
               )}
               <div>
                 <span className="text-sm font-semibold text-blue-600">Tips:</span>
-                <p className="text-gray-700 mt-1 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                <p className="text-gray-700 mt-2 p-3 bg-blue-50 rounded-md border-l-4 border-blue-400">
                   {feedbackData.feedback.tip}
                 </p>
               </div>
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-[200px]">
-              <p className="text-gray-500 text-center">
-                Your feedback will appear here...
-              </p>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Native Speaker Example Video Section - Only show after feedback */}
+            {/* Native Speaker Example Video Section - Only show after feedback */}
       {(() => {
         const hasExampleVideo = feedbackData && (feedbackData.example_video_url || turnData?.example_video_url);
         return hasExampleVideo ? (
           <div className="px-5 mb-8">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">
               💡 Native Speaker Example (Optional)
             </h3>
-                         <div 
-               className="w-full rounded-lg flex items-center justify-center relative"
-               style={{
-                 background: 'linear-gradient(to bottom right, #581c87, #7e22ce)',
-                 minHeight: '200px',
-                 height: '200px',
-                 width: '100%',
-                 display: 'flex',
-                 alignItems: 'center',
-                 justifyContent: 'center'
-               }}
-             >
-               <button 
-                 onClick={() => setShowExampleVideo(true)}
-                 className="rounded-full flex items-center justify-center transition-all z-10"
-                 style={{
-                   width: '64px',
-                   height: '64px',
-                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                   border: 'none',
-                   cursor: 'pointer',
-                   display: 'flex',
-                   alignItems: 'center',
-                   justifyContent: 'center'
-                 }}
-                 onMouseEnter={(e) => {
-                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-                 }}
-                 onMouseLeave={(e) => {
-                   e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                 }}
-               >
-                 <Play className="w-6 h-6 text-white ml-1" fill="white" stroke="white" strokeWidth={2} style={{ display: 'block' }} />
-               </button>
-                          </div>
-             <p className="text-xs text-gray-600 mt-2 text-center">
-               Watch how a native speaker would respond to this scenario
-             </p>
-           </div>
-         ) : null;
-       })()}
+            <div className="w-full h-[200px] rounded-lg flex items-center justify-center relative bg-gradient-to-br from-purple-900 to-purple-700">
+              <button 
+                onClick={() => setShowExampleVideo(true)}
+                className="w-16 h-16 rounded-full flex items-center justify-center transition-all bg-white bg-opacity-20 hover:bg-opacity-30 active:bg-opacity-40"
+              >
+                <Play className="w-6 h-6 text-white ml-1" fill="white" stroke="white" strokeWidth={2} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-2 text-center">
+              Watch how a native speaker would respond to this scenario
+            </p>
+          </div>
+        ) : null;
+      })()}
       </div>
 
-      {/* Example Video Player Modal */}
+            {/* Example Video Player Modal */}
       {showExampleVideo && (feedbackData?.example_video_url || turnData?.example_video_url) && (
         <div className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center">
           <div className="relative w-[390px] px-5">
             <button 
-                             onClick={() => setShowExampleVideo(false)}
+              onClick={() => setShowExampleVideo(false)}
               className="absolute -top-12 right-5 text-white text-3xl font-bold hover:text-gray-300 transition-colors"
             >
               ✕
@@ -515,8 +541,8 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
               autoPlay
               playsInline
               className="w-full rounded-lg"
-                             onEnded={() => setShowExampleVideo(false)}
-               onError={() => setShowExampleVideo(false)}
+              onEnded={() => setShowExampleVideo(false)}
+              onError={() => setShowExampleVideo(false)}
             />
             <p className="text-white text-center text-sm mt-3">
               Native Speaker Example
