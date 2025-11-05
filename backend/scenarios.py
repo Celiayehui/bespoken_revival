@@ -158,6 +158,50 @@ SCENARIOS = {
         ]
     },
 
+    "coffee_chat": {
+        "title": "Coffee Chat with a Startup Founder",
+        "description": "Practice conversational interviewing and small talk during an informal coffee chat with a startup founder.",
+        "difficulty": "Advanced",
+        "image_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/preview_image/coffeechat.png",
+        "turns": [
+            {
+                "turn_index": 1,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v1.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v1answer.mp4",
+                "transcript": "So that’s enough about me; tell me about yourself! What’s your background, and what brings you here to talk about a job at BeSpoken?"
+            },
+            {
+                "turn_index": 2,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v2.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v2answer.mp4",
+                "transcript": "Great, super interesting. Thanks for sharing! And what kind of role are you looking for here?"
+            },
+            {
+                "turn_index": 3,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v3.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v3+answer.mp4",
+                "transcript": "Ok cool, that’s helpful to know. Now that I have a clearer sense of who you are, I’d love to answer any questions you have. (Hint: ask him about BeSpoken's culture)"
+            },
+            {
+                "turn_index": 4,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v4.mp4",
+                "example_video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v4+answer.mp4",
+                "transcript": "Great question! Anything other questions? (Hint: ask him about a typical week at BeSpoken)"
+            },
+            {
+                "turn_index": 5,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v5.mp4",
+                "transcript": "Great question! Anything other questions? (Hint: wrap up the conversation)"
+            },
+            {
+                "turn_index": 6,
+                "video_url": "https://celia-audio-test-bucket.s3.us-east-2.amazonaws.com/videos/coffee+chat/coffeechat+v6.mp4",
+                "transcript": "Very cool. Let me check with my team about what openings we have, but we’ll keep the conversation going! Feel free to add me on LinkedIn if you want to reach out about anything else comes up."
+            }
+        ]
+    },
+
+
     "grocery_store": {
         "title": "Check Out at Whole Foods",
         "description": "Practice real-world checkout conversations at a Whole Foods-style grocery store.",
