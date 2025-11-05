@@ -1,55 +1,3 @@
-/**
- * --- FIGMA REFERENCE STYLE ---
- * Below is the simplified Figma-generated UI code for reference.
- * Use it only for styling and layout cues (colors, spacing, text, button states).
- * DO NOT copy or change logic — keep all functions and hooks intact.
- * The goal is to match the visual design from the Figma prototype while keeping all logic, hooks, and backend calls intact.
- *
- * Figma → Current Code Mapping:
- * - Figma 'idle'          → current 'idle'
- * - Figma 'preparing'     → current 'starting'
- * - Figma 'recording'     → current 'recording'
- * - Figma 'readyToSubmit' → current 'recorded'
- * - Figma 'processing' + 'completed' → current 'feedback'
- *
- * So the complete flow in our code is:
- * idle → starting → recording → recorded → feedback
- *
- * --- FEEDBACK STATE BEHAVIOR ---
- * In our implementation, Figma’s "processing" and "completed" states are merged into one called 'feedback'.
- * - When feedback is still being generated (`isLoading === true` and no `feedbackData` yet), show a "Processing..." spinner.
- * - Once feedback is available (`isLoading === false` and `feedbackData` exists), show the feedback results and display the "Next" button.
- *
- * This logic is already implemented in the existing Feedback Section using `isLoading` and `feedbackData`.
- * Do NOT add new states for processing or completed — just restyle the existing UI to match Figma's visuals.
- *
- * --- TASK INSTRUCTIONS FOR CURSOR ---
- * 1. Keep all existing logic exactly as-is, including:
- *    - MediaRecorder behavior (start, stop, submit)
- *    - Feedback and turn handling
- *    - State transitions and API calls
- */
-
-/*
-// Recording button states (from Figma reference):
-switch (recordingState) {
-  case 'idle':
-    <button className="w-[70px] h-[70px] bg-red-500 rounded-full ..."><Mic /></button>
-  case 'preparing':
-    <button disabled className="w-[70px] h-[70px] bg-orange-500 ..."><Loader2 /></button>
-  case 'recording':
-    <button className="w-[70px] h-[70px] bg-red-600 animate-pulse ...">🔴 Recording...</button>
-  case 'readyToSubmit':
-    <button className="w-full h-12 bg-blue-500 text-white rounded-lg ...">Submit</button>
-    <button className="text-sm text-blue-600 mt-3 hover:underline">Record again</button>
-  case 'processing':
-    <button disabled className="w-full h-12 bg-blue-400 text-white ...">Processing...</button>
-  case 'completed':
-    <button className="w-full h-12 bg-blue-500 text-white ...">Next</button>
-}
-*/
-
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Play, Loader2, Circle } from 'lucide-react';
 import HamburgerMenu from './HamburgerMenu';
@@ -81,6 +29,44 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Helper function to highlight differences between transcript and rewrite
+  const highlightDifferences = (transcript: string, rewrite: string): React.ReactElement => {
+    // Normalize strings: remove punctuation and convert to lowercase for comparison
+    const normalizeWord = (word: string) => word.replace(/[^\w]/g, '').toLowerCase();
+    
+    // Split into words while preserving punctuation positions
+    const transcriptWords = transcript.match(/\S+/g) || [];
+    const rewriteWords = rewrite.match(/\S+/g) || [];
+    
+    // Create a set of normalized transcript words for quick lookup
+    const transcriptNormalized = new Set(transcriptWords.map(normalizeWord));
+    
+    // Build the result with React elements and spaces
+    const result: (string | React.ReactElement)[] = [];
+    
+    rewriteWords.forEach((word, index) => {
+      const normalizedWord = normalizeWord(word);
+      const isDifferent = !transcriptNormalized.has(normalizedWord);
+      
+      if (isDifferent) {
+        result.push(
+          <b key={index} className="font-semibold text-green-700">
+            {word}
+          </b>
+        );
+      } else {
+        result.push(word);
+      }
+      
+      // Add space after word (except for the last one)
+      if (index < rewriteWords.length - 1) {
+        result.push(' ');
+      }
+    });
+    
+    return <>{result}</>;
+  };
 
   const fetchTurnData = async () => {
     try {
@@ -486,7 +472,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
                 <div>
                   <span className="text-sm font-semibold text-gray-900">Try instead:</span>
                   <p className="text-gray-900 mt-2 p-3 bg-green-50 rounded-md border-l-4 border-green-400">
-                    "{feedbackData.feedback.rewrite}"
+                    "{highlightDifferences(feedbackData.transcript, feedbackData.feedback.rewrite)}"
                   </p>
                 </div>
               )}
