@@ -175,25 +175,148 @@ def transcribe_with_whisper(file_bytes: bytes, filename: str) -> str:
         raise RuntimeError(f"Whisper transcription failed: {e}")
 
 
-def generate_feedback_with_gpt(transcript: str, scenario_title: str | None = None, scenario_description: str | None = None, turn_transcript: str | None = None) -> dict:
-    """Call GPT-5 to generate concise pronunciation/fluency/word-choice feedback and a suggested native-like rewrite."""
+def get_context_window(db, user_id: str, scenario_id: str, turn_index: int, k: int = 2) -> dict:
+    """
+    Retrieve context window for context-aware feedback generation.
+    Returns last k partner transcripts (from SCENARIOS) and last k learner transcripts
+    (from conversation_turns) before the current turn.
+    Each transcript line is truncated to ~180 chars to stay within token limits.
+    """
+    prev_partner = []
+    prev_user = []
+    
+    # Get partner transcripts from SCENARIOS data
+    scenario_data = get_scenario_data(scenario_id)
+    if scenario_data and "turns" in scenario_data:
+        for turn in scenario_data["turns"]:
+            if turn.get("turn_index", 0) < turn_index:
+                transcript = turn.get("transcript", "")
+                # Truncate to ~180 chars, preserving sentence boundaries where possible
+                if len(transcript) > 180:
+                    truncated = transcript[:177] + "..."
+                else:
+                    truncated = transcript
+                prev_partner.append(truncated)
+        
+        # Keep only the last k partner transcripts
+        prev_partner = prev_partner[-k:] if len(prev_partner) > k else prev_partner
+    
+    # Get learner transcripts from conversation_turns collection
+    try:
+        # Query for previous turns from the same user/scenario with lower turn_index
+        previous_turns = list(db.conversation_turns.find(
+            {
+                "user_id": user_id,
+                "scenario_id": scenario_id,
+                "turn_index": {"$lt": turn_index}
+            }
+        ).sort("turn_index", -1).limit(k))
+        
+        for turn in reversed(previous_turns):  # Reverse to get chronological order
+            transcript = turn.get("transcript", "")
+            if transcript:
+                # Truncate to ~180 chars
+                if len(transcript) > 180:
+                    truncated = transcript[:177] + "..."
+                else:
+                    truncated = transcript
+                prev_user.append(truncated)
+    except Exception as e:
+        print(f"⚠️ Error querying context window from DB: {e}")
+        # Continue with empty prev_user if DB query fails
+    
+    return {
+        "prev_partner": prev_partner,
+        "prev_user": prev_user
+    }
+
+
+def generate_feedback_with_gpt(
+    transcript: str,
+    scenario_title: str | None = None,
+    scenario_description: str | None = None,
+    turn_transcript: str | None = None,
+    context_window: dict | None = None
+) -> dict:
+    """
+    Generate context-aware feedback using GPT with conversation history.
+    Returns JSON with tip, rewrite, context_relevance, off_topic, missing_elements, and safety.
+    """
     if not openai_client:
         raise RuntimeError("OpenAI client is not initialized. Set OPENAI_API_KEY and install openai SDK.")
 
     system_prompt = (
-        "You are a friendly American English speaking coach who helps ESL learners sound more natural and conversational."
-        " Your goal is to help them speak the way people in the U.S. actually talk day to day — not textbook English."
-        " Be brief, encouraging, and actionable."
-        " Return JSON with keys:"
-        " tip (one short coaching note or compliment, ≤25 words),"
-        " rewrite (one natural, native-sounding version of what the learner said, or 'none' if it's already perfect)."
-        " If the learner’s sentence already sounds natural and polite, celebrate that and set rewrite='none'."
-        " Avoid IPA or phonetic symbols."
-    )
+    "You are a warm, supportive American English coach helping ESL learners speak naturally and confidently in everyday U.S. contexts. "
+    "Your job is to correct only when something truly sounds unnatural, confusing, or grammatically wrong — otherwise, praise them. "
+    "Your feedback should teach, not just correct. Help the learner understand *why* native speakers say it differently. "
+
+    "Return JSON with these exact keys: "
+    "rewrite (a concise native-sounding alternative if the learner’s wording is clearly unidiomatic, too formal/awkward, grammatically incorrect, or off-topic; otherwise 'none'), "
+    "tip (one short coaching note or compliment ≤40 words explaining the main improvement or reasoning, no IPA), "
+    "context_relevance (float 0.0–1.0, how well the reply addresses the partner's question/goal), "
+    "off_topic (boolean, true if learner ignored partner's question/goal), "
+    "missing_elements (array of strings, e.g., ['answer_question', 'follow_up', 'politeness']), "
+    "safety (string, always 'ok' unless there's a safety concern). "
+
+    "Behavior rules: "
+    "- Praise generously when the sentence is natural or contextually fine (e.g., 'That sounds natural!'). "
+    "- Ignore trivial differences such as punctuation, spacing, or capitalization. "
+    "- Do not suggest rewrites if the only difference is punctuation (e.g., missing commas, question marks, or periods). "
+    "- Treat 'is' vs. '’s' (contraction) as equivalent — both are acceptable, so just praise the user instead of correcting. "
+    "- Avoid emotional or cultural coaching like 'be friendly' or 'sound lighter' — focus purely on linguistic naturalness and contextual appropriateness. "
+    "- Only mark off_topic=true if the learner ignores the main question or task. "
+    "- If the learner makes a grammar or word-choice error, explain briefly *why* the correction is needed, especially when two words look similar but differ in usage. "
+    "- When correcting vocabulary nuance (e.g., 'appearance' vs 'outfit', 'live' vs 'stay'), clarify the difference in meaning and appropriateness in plain English. "
+    "- Keep the tip clear, supportive, and educational — imagine explaining it to a student in one friendly sentence. "
+    "- Never rewrite or comment when the learner already uses perfectly natural, idiomatic English. "
+
+    "Here are examples of your behavior: "
+
+    "Example 1: "
+    "User said: 'How is your quarter going?' "
+    "You should reply: "
+    "{\"tip\": \"That sounds completely natural — great phrasing!\", \"rewrite\": \"none\"} "
+
+    "Example 2: "
+    "User said: 'I like your appearance.' "
+    "You should reply: "
+    "{\"tip\": \"'Appearance' describes someone’s overall looks, which can sound personal. 'Outfit' means their clothes — it’s the natural word for complimenting style.\", \"rewrite\": \"I like your outfit.\"} "
+
+    "Example 3: "
+    "User said: 'I go to San Francisco for work trip.' "
+    "You should reply: "
+    "{\"tip\": \"Say 'I’m going to' for near-future plans, and add 'a' before 'work trip' — this sounds fluent and natural.\", \"rewrite\": \"I'm going to San Francisco for a work trip.\"} "
+
+    "Example 4: "
+    "User said: 'I stay in Menlo Park when I visit California.' "
+    "You should reply: "
+    "{\"tip\": \"Perfect — that’s exactly how native speakers describe temporary stays.\", \"rewrite\": \"none\"} "
+)
+
+
+    # Build context section for user prompt
+    context_section = ""
+    if context_window:
+        prev_partner = context_window.get("prev_partner", [])
+        prev_user = context_window.get("prev_user", [])
+        
+        if prev_partner or prev_user:
+            context_section = "\n\nPrevious conversation context:\n"
+            if prev_partner:
+                context_section += "Partner said earlier:\n"
+                for i, partner_line in enumerate(prev_partner, 1):
+                    context_section += f"  {i}. {partner_line}\n"
+            if prev_user:
+                context_section += "Learner said earlier:\n"
+                for i, user_line in enumerate(prev_user, 1):
+                    context_section += f"  {i}. {user_line}\n"
 
     user_prompt = (
-        f"The scenario is: {scenario_description or 'conversation'}. In this turn, the conversation partner said: '{turn_transcript or '[no context]'}'. Now the learner responded with: '{transcript}'\n"
-        "Give one quick tip about how to sound more natural to a native U.S. English speaker."
+        f"Scenario: {scenario_title or 'Conversation'} - {scenario_description or 'Practice conversation'}\n"
+        f"Current turn - Partner said: '{turn_transcript or '[no context]'}'{context_section}\n"
+        f"Learner responded: '{transcript}'\n\n"
+        "Evaluate if the learner's response appropriately addresses the partner's question/goal."
+        " Give one quick tip about how to sound more natural to a native U.S. English speaker."
         " If it already sounds natural, praise them instead of suggesting a rewrite."
     )
 
@@ -201,8 +324,8 @@ def generate_feedback_with_gpt(transcript: str, scenario_title: str | None = Non
         model = os.getenv("FAST_GPT_MODEL", "gpt-4o-mini")
         completion = openai_client.chat.completions.create(
             model=model,
-            temperature=1,
-            max_tokens=120,
+            temperature=0.5,
+            max_tokens=220,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -211,7 +334,31 @@ def generate_feedback_with_gpt(transcript: str, scenario_title: str | None = Non
         )
         content = completion.choices[0].message.content
         import json
-        return json.loads(content)
+        feedback = json.loads(content)
+        
+        # Ensure all required fields exist with defaults
+        result = {
+            "tip": feedback.get("tip", "Keep practicing!"),
+            "rewrite": feedback.get("rewrite", "none"),
+            "context_relevance": float(feedback.get("context_relevance", 0.5)),
+            "off_topic": bool(feedback.get("off_topic", False)),
+            "missing_elements": feedback.get("missing_elements", []),
+            "safety": feedback.get("safety", "ok")
+        }
+        
+        # Validate context_relevance is in [0, 1]
+        result["context_relevance"] = max(0.0, min(1.0, result["context_relevance"]))
+        
+        # Post-process feedback based on off_topic and context_relevance flags
+        if result["off_topic"]:
+            result["raw_tip"] = result["tip"]
+            result["tip"] = "Your reply was off topic. Try responding to your partner's question next time."
+            result["rewrite"] = "none"
+        elif result["context_relevance"] < 0.5:
+            result["raw_tip"] = result["tip"]
+            result["tip"] = "Your answer didn't fully address the question. Try staying closer to the topic."
+        
+        return result
     except Exception as e:
         raise RuntimeError(f"GPT feedback failed: {e}")
 
@@ -396,6 +543,9 @@ def handle_upload():
             print(f"⚠️ Failed to get turn context: {e}")
             turn_context = None
 
+    # Build context window for context-aware feedback
+    context_window = get_context_window(db, user_id, scenario_id, turn_index, k=2)
+    
     # Generate feedback with GPT-5
     print(f"🤖 SENDING TO GPT - Scenario: '{turn_context.get('scenario_title') if turn_context else 'unknown'}', Turn question: '{turn_context.get('turn_transcript', '')[:50] if turn_context else 'none'}...', User said: '{transcript}'")
     try:
@@ -404,7 +554,8 @@ def handle_upload():
             transcript=transcript, 
             scenario_title=turn_context.get('scenario_title') if turn_context else None,
             scenario_description=turn_context.get('scenario_description') if turn_context else None,
-            turn_transcript=turn_context.get('turn_transcript') if turn_context else None
+            turn_transcript=turn_context.get('turn_transcript') if turn_context else None,
+            context_window=context_window
         )
         t_llm_ms = int((time.perf_counter() - _t) * 1000)
         print(f"💬 GPT RESPONSE: {feedback}")
