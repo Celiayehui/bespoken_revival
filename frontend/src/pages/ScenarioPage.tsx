@@ -30,43 +30,96 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
   const audioChunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Helper function to highlight differences between transcript and rewrite
-  const highlightDifferences = (transcript: string, rewrite: string): React.ReactElement => {
-    // Normalize strings: remove punctuation and convert to lowercase for comparison
-    const normalizeWord = (word: string) => word.replace(/[^\w]/g, '').toLowerCase();
+const getWordStyle = (status: 'correct' | 'fluent' | 'incorrect') => {
+  switch (status) {
+    case 'correct':
+      return 'border-b-2 border-green-500';
+    case 'fluent':
+      return 'border-b-2 border-yellow-500 border-dotted';
+    case 'incorrect':
+      return 'border-b-2 border-red-500 border-dotted';
+    default:
+      return '';
+  }
+};
+
+// Helper function to highlight differences between transcript and rewrite
+const highlightDifferences = (transcript: string, rewrite: string): React.ReactElement => {
+  // Normalize strings: remove punctuation and convert to lowercase for comparison
+  const normalizeWord = (word: string) => word.replace(/[^\w]/g, '').toLowerCase();
+  
+  // Split into words while preserving punctuation positions
+  const transcriptWords = transcript.match(/\S+/g) || [];
+  const rewriteWords = rewrite.match(/\S+/g) || [];
+  
+  console.log('🧩 highlightDifferences tokens:', rewriteWords);
+  
+  // Create a set of normalized transcript words for quick lookup
+  const transcriptNormalized = new Set(transcriptWords.map(normalizeWord));
+  
+  const result = rewriteWords.map((word, index) => {
+    const normalizedWord = normalizeWord(word);
+    const isDifferent = !transcriptNormalized.has(normalizedWord);
+    const className = isDifferent ? 'font-semibold text-gray-900' : 'font-normal text-gray-900';
     
-    // Split into words while preserving punctuation positions
-    const transcriptWords = transcript.match(/\S+/g) || [];
-    const rewriteWords = rewrite.match(/\S+/g) || [];
-    
-    // Create a set of normalized transcript words for quick lookup
-    const transcriptNormalized = new Set(transcriptWords.map(normalizeWord));
-    
-    // Build the result with React elements and spaces
-    const result: (string | React.ReactElement)[] = [];
-    
-    rewriteWords.forEach((word, index) => {
-      const normalizedWord = normalizeWord(word);
-      const isDifferent = !transcriptNormalized.has(normalizedWord);
-      
-      if (isDifferent) {
-        result.push(
-          <b key={index} className="font-semibold text-green-700">
-            {word}
-          </b>
-        );
-      } else {
-        result.push(word);
-      }
-      
-      // Add space after word (except for the last one)
-      if (index < rewriteWords.length - 1) {
-        result.push(' ');
-      }
-    });
-    
-    return <>{result}</>;
-  };
+    return (
+      <React.Fragment key={`${word}-${index}`}>
+        <span className={className}>{word}</span>
+        {index < rewriteWords.length - 1 ? ' ' : null}
+      </React.Fragment>
+    );
+  });
+  
+  if (result.length === 0) {
+    return <span className="font-normal text-gray-900">{rewrite}</span>;
+  }
+  
+  return <>{result}</>;
+};
+
+const getFeedbackStyle = (grade?: string) => {
+  switch (grade) {
+    case 'green':
+      return { bgColor: 'bg-green-50', borderColor: 'border-green-300', message: '🎉 You sound just like a native speaker.' };
+    case 'yellow':
+      return { bgColor: 'bg-yellow-50', borderColor: 'border-yellow-300', message: "😊 Keep practicing, you're improving fast." };
+    case 'red':
+      return { bgColor: 'bg-red-50', borderColor: 'border-red-300', message: '❤️ Mistakes are how we learn!' };
+    default:
+      return { bgColor: 'bg-gray-50', borderColor: 'border-gray-200', message: '' };
+  }
+};
+
+const renderHighlightTokens = (
+  highlightTokens: Array<{ token: string; color: 'green' | 'yellow' | 'red' }> | undefined,
+  fallbackText: string
+): React.ReactNode => {
+  if (!highlightTokens || highlightTokens.length === 0) {
+    console.log('⚠️ renderHighlightTokens: no tokens, using fallback transcript');
+    return fallbackText;
+  }
+
+  console.log('🎨 renderHighlightTokens: count', highlightTokens.length);
+  highlightTokens.forEach((token) => {
+    console.log('🎨 token', token.token, token.color);
+  });
+
+  return highlightTokens.map((tokenData, index) => {
+    const baseClass =
+      tokenData.color === 'green'
+        ? 'border-b-2 border-green-500'
+        : tokenData.color === 'yellow'
+        ? 'border-b-2 border-yellow-500 border-dotted'
+        : 'border-b-2 border-orange-500';
+
+    return (
+      <React.Fragment key={`${tokenData.token}-${index}`}>
+        <span className={baseClass}>{tokenData.token}</span>
+        {index < highlightTokens.length - 1 ? ' ' : null}
+      </React.Fragment>
+    );
+  });
+};
 
   const fetchTurnData = async () => {
     try {
@@ -94,6 +147,12 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
     setStatus('idle');
   }, [currentTurn]);
 
+
+  useEffect(() => {
+    if (feedbackData) {
+      console.log("🧠 feedbackData:", feedbackData);
+    }
+  }, [feedbackData]);
 
 
 
@@ -224,6 +283,15 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       setFeedbackData({
         transcript: data.transcript,
         feedback: data.feedback,
+        wordFeedback: data.feedback.highlight_tokens?.map((t: { token: string; color: 'green' | 'yellow' | 'red' }) => ({
+          word: t.token,
+          status:
+            t.color === 'green'
+              ? 'correct'
+              : t.color === 'yellow'
+              ? 'fluent'
+              : 'incorrect'
+        })),
         turn_transcript: turnData?.turn_transcript || '',
         example_video_url: turnData?.example_video_url || null  // Preserve example_video_url from current turn
       });
@@ -267,6 +335,7 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
             : 'There was an error processing your recording. Please try again.',
           rewrite: 'none'
         },
+        wordFeedback: [],
         turn_transcript: turnData?.turn_transcript || '',
         example_video_url: turnData?.example_video_url || null  // Preserve example_video_url even on error
       });
@@ -458,34 +527,98 @@ export default function ScenarioPage({ scenarioId, onComplete, currentTurn, onTu
       </div>
 
       {/* Feedback Section */}
-      {feedbackData && (
-        <div className="px-5 mb-8">
-          <div className="w-full bg-white rounded-lg border border-gray-200 p-5">
-            <div className="space-y-4">
-              <div>
-                <span className="text-sm font-semibold text-gray-900">You said:</span>
-                <p className="text-gray-900 mt-2 p-3 bg-gray-50 rounded-md border-l-4 border-gray-300">
-                  "{feedbackData.transcript}"
+      {feedbackData && feedbackData.feedback && (() => {
+        const feedbackStyle = getFeedbackStyle(feedbackData.feedback.grade);
+        const highlightTokens = feedbackData.feedback.highlight_tokens;
+        const hasHighlightTokens = Array.isArray(highlightTokens) && highlightTokens.length > 0;
+        const hasWordFeedback = Array.isArray(feedbackData.wordFeedback) && feedbackData.wordFeedback.length > 0;
+
+        console.log('🧠 highlightTokens:', highlightTokens);
+        console.log('🧠 hasHighlightTokens:', hasHighlightTokens);
+        const renderedTranscriptContent = (() => {
+          if (hasHighlightTokens) {
+            return renderHighlightTokens(highlightTokens, feedbackData.transcript || '');
+          }
+
+          if (hasWordFeedback) {
+            console.log('🎨 Using wordFeedback fallback');
+            return feedbackData.wordFeedback.map(
+              (wordObj: { word: string; status: 'correct' | 'fluent' | 'incorrect' }, idx: number) => (
+                <React.Fragment key={`${wordObj.word}-${idx}`}>
+                  <span className={getWordStyle(wordObj.status)}>{wordObj.word}</span>
+                  {idx < feedbackData.wordFeedback.length - 1 ? ' ' : null}
+                </React.Fragment>
+              )
+            );
+          }
+
+          console.log('⚠️ Fallback to raw transcript');
+          return feedbackData.transcript || '';
+        })();
+
+        return (
+          <div className="px-5 mb-8 space-y-4">
+          {/* Feedback Summary Card */}
+          <div
+            className={`w-full ${feedbackStyle.bgColor} border ${feedbackStyle.borderColor} rounded-lg p-4`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="w-4 h-4 rounded-full bg-red-600"
+                style={{ boxShadow: feedbackData.feedback.grade === 'red' ? '0 0 0 3px #991b1b' : 'none' }}
+              ></div>
+              <div
+                className="w-4 h-4 rounded-full bg-yellow-500"
+                style={{ boxShadow: feedbackData.feedback.grade === 'yellow' ? '0 0 0 3px #854d0e' : 'none' }}
+              ></div>
+              <div
+                className="w-4 h-4 rounded-full bg-green-600"
+                style={{ boxShadow: feedbackData.feedback.grade === 'green' ? '0 0 0 3px #15803d' : 'none' }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-800">
+              {feedbackStyle.message || feedbackData.feedback.tip || 'Great job!'}
+            </p>
+          </div>
+
+          {/* Main Feedback Card */}
+          <div className="w-full bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+            {/* You said */}
+            <div className="mb-4">
+              <p className="text-sm text-gray-900 mb-2">You said:</p>
+              <p className="text-base text-gray-800 leading-relaxed">
+                "
+                {renderedTranscriptContent}
+                "
+              </p>
+            </div>
+
+            {/* Try instead */}
+            {feedbackData.feedback.rewrite && feedbackData.feedback.rewrite !== 'none' && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-900 mb-2">Try instead:</p>
+                <p className="text-base text-gray-900 leading-relaxed font-normal">
+                  "
+                  {highlightDifferences(
+                    feedbackData.transcript || '',
+                    feedbackData.feedback.rewrite
+                  )}
+                  "
                 </p>
               </div>
-              {feedbackData.feedback.rewrite && feedbackData.feedback.rewrite !== 'none' && (
-                <div>
-                  <span className="text-sm font-semibold text-gray-900">Try instead:</span>
-                  <p className="text-gray-900 mt-2 p-3 bg-green-50 rounded-md border-l-4 border-green-400">
-                    "{highlightDifferences(feedbackData.transcript, feedbackData.feedback.rewrite)}"
-                  </p>
-                </div>
-              )}
-              <div>
-                <span className="text-sm font-semibold text-blue-600">Tips:</span>
-                <p className="text-gray-700 mt-2 p-3 bg-blue-50 rounded-md border-l-4 border-blue-400">
-                  {feedbackData.feedback.tip}
-                </p>
-              </div>
+            )}
+
+            {/* Tips */}
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Tips:</p>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                {feedbackData.feedback.tip || 'Keep practicing and review the suggestions above.'}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
             {/* Native Speaker Example Video Section - Only show after feedback */}
       {(() => {
