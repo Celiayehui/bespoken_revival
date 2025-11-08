@@ -1,3 +1,7 @@
+## this test prompt is not great because it does not consider the user prompt, where we
+## \ have a lot of historic context and scenario info. 
+## need to figure out a way to test flexibly...
+
 # test_prompt.py
 from dotenv import load_dotenv
 import os

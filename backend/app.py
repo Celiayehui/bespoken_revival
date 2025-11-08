@@ -2,6 +2,7 @@ import os
 import io
 import time
 import uuid
+import json
 from datetime import datetime, timezone
 
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +14,7 @@ from werkzeug.utils import secure_filename
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from pymongo import MongoClient
+from bson import ObjectId
 from scenarios import get_turn_context, get_video_url, get_example_video_url, get_all_scenarios, get_scenario_data, get_turn_question
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -245,94 +247,8 @@ def generate_feedback_with_gpt(
     if not openai_client:
         raise RuntimeError("OpenAI client is not initialized. Set OPENAI_API_KEY and install openai SDK.")
 
-    system_prompt = (
-    "You are a warm, supportive American English coach helping ESL learners speak naturally and confidently in everyday U.S. contexts. "
-    "In addition to giving coaching feedback, you will also classify their overall fluency level. "
-    "Your job is to correct only when something truly sounds unnatural, confusing, or grammatically wrong — otherwise, praise them. "
-    "Your feedback should teach, not just correct. Help the learner understand *why* native speakers say it differently. "
-
-    "Return JSON with these exact keys: "
-    "rewrite (a concise native-sounding alternative if the learner’s wording is clearly unidiomatic, too formal/awkward, grammatically incorrect, or off-topic; otherwise 'none'), "
-    "tip (one short coaching note or compliment ≤40 words explaining the main improvement or reasoning, no IPA), "
-    "context_relevance (float 0.0–1.0, how well the reply addresses the partner's question/goal), "
-    "off_topic (boolean, true if learner ignored partner's question/goal), "
-    "missing_elements (array of strings, e.g., ['answer_question', 'follow_up', 'politeness']), "
-    "safety (string, always 'ok' unless there's a safety concern). "
-    "grade (string: 'green', 'yellow', or 'red' — representing overall fluency), "
-    "highlight_tokens (array of {token,color} using 'green', 'yellow', or 'red', covering all meaningful words or short phrases in the learner’s sentence). "
-
-
-    "Behavior rules: "
-    "- Praise generously when the sentence is natural or contextually fine (e.g., 'That sounds natural!'). "
-    "- Ignore trivial differences such as punctuation, spacing, or capitalization. "
-    "- Do not suggest rewrites if the only difference is punctuation (e.g., missing commas, question marks, or periods). "
-    "- Treat 'is' vs. '’s' (contraction) as equivalent — both are acceptable, so just praise the user instead of correcting. "
-    "- Avoid emotional or cultural coaching like 'be friendly' or 'sound lighter' — focus purely on linguistic naturalness and contextual appropriateness. "
-    "- Only mark off_topic=true if the learner ignores the main question or task. "
-    "- If the learner makes a grammar or word-choice error, explain briefly *why* the correction is needed, especially when two words look similar but differ in usage. "
-    "- When correcting vocabulary nuance (e.g., 'appearance' vs 'outfit', 'live' vs 'stay'), clarify the difference in meaning and appropriateness in plain English. "
-    "- Keep the tip clear, supportive, and educational — imagine explaining it to a student in one friendly sentence. "
-    "- Never rewrite or comment when the learner already uses perfectly natural, idiomatic English. "
-    
-     "Color and grade rules: "
-    "- 'green' = natural/native-like; only praise and don't suggest rewrites. "
-    "- 'yellow' = understandable but not native-sounding; gentle correction needed. "
-    "- 'red' = confusing or incorrect; clear correction required. "
-    "- Use the same color system for both grade and highlight_tokens to maintain consistency. "
-    "- highlight_tokens should color each token based on its correctness or clarity within the sentence. "
-   
-
-    "Here are examples of your behavior: "
-
-    "Example 1:\n"
-    "User said: 'How is your quarter going?'\n"
-    "Response: {"
-        "\"rewrite\": \"none\", "
-        "\"tip\": \"That sounds completely natural — great phrasing!\", "
-        "\"grade\": \"green\", "
-        "\"highlight_tokens\": ["
-            "{\"token\": \"How is your quarter going?\", \"color\": \"green\"}"
-        "]"
-    "}"
-
-    "Example 2:\n"
-    "User said: 'I like your appearance.'\n"
-    "Response: {"
-        "\"rewrite\": \"I like your outfit.\", "
-        "\"tip\": \"'Appearance' describes someone’s overall looks, which can sound personal. 'Outfit' means their clothes — it’s the natural word for complimenting style.\", "
-        "\"grade\": \"yellow\", "
-        "\"highlight_tokens\": ["
-            "{\"token\": \"I like your\", \"color\": \"green\"}, "
-            "{\"token\": \"appearance\", \"color\": \"yellow\"}"
-        "]"
-    "}"
-
-    "Example 3:\n"
-    "User said: 'I go to San Francisco for work trip.'\n"
-    "Response: {"
-        "\"rewrite\": \"I'm going to San Francisco for a work trip.\", "
-        "\"tip\": \"Say 'I’m going to' for near-future plans, and add 'a' before 'work trip' — this sounds fluent and natural.\", "
-        "\"grade\": \"yellow\", "
-        "\"highlight_tokens\": ["
-            "{\"token\": \"I go to\", \"color\": \"yellow\"}, "
-            "{\"token\": \"San Francisco\", \"color\": \"green\"}, "
-            "{\"token\": \"for work trip\", \"color\": \"yellow\"}"
-        "]"
-    "}"
-
-    "Example 4:\n"
-    "User said: 'To do product manager.'\n"
-    "Response: {"
-        "\"rewrite\": \"I'm looking to be a product manager.\", "
-        "\"tip\": \"Use 'I'm looking to be' to express your career goal naturally.\", "
-        "\"grade\": \"red\", "
-        "\"highlight_tokens\": ["
-            "{\"token\": \"To do\", \"color\": \"red\"}, "
-            "{\"token\": \"product manager\", \"color\": \"green\"}"
-        "]"
-    "}"
-
-)
+    with open("system_prompt.txt", "r", encoding="utf-8") as f:
+        system_prompt = f.read()
 
 
     # Build context section for user prompt
@@ -413,22 +329,44 @@ def generate_feedback_with_gpt(
 
 def save_turn(
     user_id: str,
+    user_email: str | None,
     scenario_id: str,
+    scenario_title: str | None,
+    scenario_description: str | None,
     turn_index: int,
+    turn_transcript: str | None,
+    context_window: dict | None,
     audio_url: str,
     transcript: str,
     feedback: dict,
 ) -> str:
     doc = {
         "user_id": user_id,
+        "user_email": user_email,
         "scenario_id": scenario_id,
+        "scenario_title": scenario_title,
+        "scenario_description": scenario_description,
         "turn_index": turn_index,
+        "turn_transcript": turn_transcript,
+        "context_window": context_window,
         "audio_url": audio_url,
         "transcript": transcript,
         "feedback": feedback,
         "created_at": datetime.now(timezone.utc),
     }
     try:
+        print(
+            "🧠 Saving turn with context:",
+            json.dumps(
+                {
+                    k: (v.isoformat() if isinstance(v, datetime) else v)
+                    for k, v in doc.items()
+                    if k not in ['audio_url', 'feedback']
+                },
+                indent=2,
+                ensure_ascii=False
+            )
+        )
         res = db.conversation_turns.insert_one(doc)
         return str(res.inserted_id)
     except Exception as e:
@@ -591,18 +529,22 @@ def handle_upload():
             print(f"⚠️ Failed to get turn context: {e}")
             turn_context = None
 
+    scenario_title = turn_context.get('scenario_title') if turn_context else None
+    scenario_description = turn_context.get('scenario_description') if turn_context else None
+    turn_transcript = turn_context.get('turn_transcript') if turn_context else None
+
     # Build context window for context-aware feedback
     context_window = get_context_window(db, user_id, scenario_id, turn_index, k=2)
     
     # Generate feedback with GPT-5
-    print(f"🤖 SENDING TO GPT - Scenario: '{turn_context.get('scenario_title') if turn_context else 'unknown'}', Turn question: '{turn_context.get('turn_transcript', '')[:50] if turn_context else 'none'}...', User said: '{transcript}'")
+    print(f"🤖 SENDING TO GPT - Scenario: '{scenario_title or 'unknown'}', Turn question: '{(turn_transcript or '')[:50]}...', User said: '{transcript}'")
     try:
         _t = time.perf_counter()
         feedback = generate_feedback_with_gpt(
             transcript=transcript, 
-            scenario_title=turn_context.get('scenario_title') if turn_context else None,
-            scenario_description=turn_context.get('scenario_description') if turn_context else None,
-            turn_transcript=turn_context.get('turn_transcript') if turn_context else None,
+            scenario_title=scenario_title,
+            scenario_description=scenario_description,
+            turn_transcript=turn_transcript,
             context_window=context_window
         )
         t_llm_ms = int((time.perf_counter() - _t) * 1000)
@@ -613,10 +555,33 @@ def handle_upload():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 502
 
+    # Lookup user email for analytics enrichment
+    user_email = None
+    if user_id:
+        try:
+            user_obj_id = ObjectId(user_id)
+            user_doc = db.users.find_one({"_id": user_obj_id})
+            if user_doc:
+                user_email = user_doc.get("email")
+        except Exception as e:
+            print(f"⚠️ Failed to fetch user email for {user_id}: {e}")
+
     # Save to MongoDB (non-blocking background task)
     def _save_to_db():
         try:
-            return save_turn(user_id, scenario_id, turn_index, audio_url, transcript, feedback)
+            return save_turn(
+                user_id=user_id,
+                user_email=user_email,
+                scenario_id=scenario_id,
+                scenario_title=scenario_title,
+                scenario_description=scenario_description,
+                turn_index=turn_index,
+                turn_transcript=turn_transcript,
+                context_window=context_window,
+                audio_url=audio_url,
+                transcript=transcript,
+                feedback=feedback,
+            )
         except Exception as e:
             print(f"⚠️ MongoDB save failed: {e}")
             return None
